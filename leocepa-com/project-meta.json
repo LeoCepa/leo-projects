@@ -1,0 +1,74 @@
+{
+  "cacas-maestras": {
+    "title": "Las 7 Cacas Maestras",
+    "emoji": "💩",
+    "description": "7 niveles, 7 reliquias y un trono legendario.",
+    "tags": ["aventura", "saga"],
+    "saga": "Valentín"
+  },
+  "el-pipi": {
+    "title": "Los Pipis Míticos",
+    "emoji": "💦",
+    "description": "La segunda parte de la saga de Valentín.",
+    "tags": ["aventura", "saga"],
+    "saga": "Valentín",
+    "entry": "index.html"
+  },
+  "el-pipi/tengo-sed": {
+    "title": "Tengo Sed",
+    "emoji": "🥤",
+    "description": "¿Qué bebemos hoy? ¡Déjalo al azar!",
+    "tags": ["divertido"]
+  },
+  "pedos-rey-javi": {
+    "title": "Los Pedos del Rey Javi",
+    "emoji": "💨",
+    "description": "La tercera parte de la saga de Valentín.",
+    "tags": ["aventura", "saga"],
+    "saga": "Valentín"
+  },
+  "el-rescate": {
+    "title": "El Rescate",
+    "emoji": "🏰",
+    "description": "Javi debe salvar a Leo y Nara del Duende Gruñón.",
+    "tags": ["aventura"]
+  },
+  "javi-rescate": {
+    "title": "Javi: Rescate de Leo y Nara",
+    "emoji": "👨‍👧‍👦",
+    "description": "10 niveles, un papá y una misión épica.",
+    "tags": ["aventura"]
+  },
+  "otro-juego": {
+    "title": "Zorro — Supervivencia",
+    "emoji": "🦊",
+    "description": "Un zorro debe sobrevivir en el bosque.",
+    "tags": ["aventura"]
+  },
+  "tengo-hambre": {
+    "title": "Tengo Hambre",
+    "emoji": "🍽️",
+    "description": "¿Qué comemos hoy? ¡Ruleta de comida!",
+    "tags": ["divertido"]
+  },
+  "hasta la luna o mas": {
+    "title": "Hasta la luna o más",
+    "emoji": "🌙",
+    "description": "Salta de plataforma en plataforma hasta la luna.",
+    "tags": ["aventura"]
+  },
+  "3enraya": {
+    "title": "3 en Raya",
+    "emoji": "⭕",
+    "description": "¡Próximamente! El clásico tres en raya.",
+    "tags": ["pronto"],
+    "status": "soon"
+  },
+  "zorro": {
+    "title": "Zorro",
+    "emoji": "🦊",
+    "description": "¡Próximamente! Nueva aventura del zorro.",
+    "tags": ["pronto"],
+    "status": "soon"
+  }
+}

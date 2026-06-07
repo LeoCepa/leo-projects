@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LeoCepa.com — Juegos de Leo</title>
+  <meta name="description" content="La web de Leo con todos sus juegos. ¡Juega gratis!">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="leocepa-com/style.css">
+</head>
+<body data-page="home" data-base="." data-self="leocepa-com">
+  <div class="stars" id="stars" aria-hidden="true"></div>
+
+  <div class="page">
+    <header class="hero">
+      <span class="badge">🎂 ¡Pronto cumplo 9 años! — 21 de junio</span>
+      <h1>LeoCepa.com</h1>
+      <p class="tagline">
+        ¡Hola! Soy <strong>Leo</strong> y esta es mi página web.
+        Aquí puedes ver y jugar a todos los juegos que voy creando.
+      </p>
+      <div class="hero-stats">
+        <span class="stat" id="game-count">… juegos listos</span>
+        <span class="stat">🚀 Hechos por mí</span>
+        <span class="stat">🎮 Gratis para jugar</span>
+      </div>
+    </header>
+
+    <nav class="filters" aria-label="Filtrar juegos">
+      <button class="filter-btn active" type="button" data-filter="all">🌟 Todos</button>
+      <button class="filter-btn" type="button" data-filter="ready">✅ Listos</button>
+      <button class="filter-btn" type="button" data-filter="saga">📚 Saga Valentín</button>
+      <button class="filter-btn" type="button" data-filter="aventura">⚔️ Aventuras</button>
+      <button class="filter-btn" type="button" data-filter="divertido">😄 Divertidos</button>
+      <button class="filter-btn" type="button" data-filter="soon">🔜 Próximamente</button>
+    </nav>
+
+    <h2 class="section-title">🕹️ Mis juegos</h2>
+    <div class="grid" id="games-grid"></div>
+
+    <footer class="footer">
+      <p>Hecho con 💜 por Leo · <a href="https://github.com/LeoCepa/leo-projects">GitHub</a></p>
+      <p>Cuando creo un juego nuevo, aparece aquí automáticamente ✨</p>
+    </footer>
+  </div>
+
+  <script src="leocepa-com/app.js"></script>
+</body>
+</html>

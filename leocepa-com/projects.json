@@ -1,0 +1,104 @@
+[
+  {
+    "id": "hasta la luna o mas",
+    "title": "Hasta la luna o más",
+    "emoji": "🌙",
+    "description": "Salta de plataforma en plataforma hasta la luna.",
+    "path": "hasta la luna o mas/index.html",
+    "tags": ["aventura"],
+    "status": "ready"
+  },
+  {
+    "id": "cacas-maestras",
+    "title": "Las 7 Cacas Maestras",
+    "emoji": "💩",
+    "description": "7 niveles, 7 reliquias y un trono legendario.",
+    "path": "cacas-maestras/index.html",
+    "tags": ["aventura", "saga"],
+    "saga": "Valentín",
+    "status": "ready"
+  },
+  {
+    "id": "el-pipi",
+    "title": "Los Pipis Míticos",
+    "emoji": "💦",
+    "description": "La segunda parte de la saga de Valentín.",
+    "path": "el-pipi/index.html",
+    "tags": ["aventura", "saga"],
+    "saga": "Valentín",
+    "status": "ready"
+  },
+  {
+    "id": "pedos-rey-javi",
+    "title": "Los Pedos del Rey Javi",
+    "emoji": "💨",
+    "description": "La tercera parte de la saga de Valentín.",
+    "path": "pedos-rey-javi/index.html",
+    "tags": ["aventura", "saga"],
+    "saga": "Valentín",
+    "status": "ready"
+  },
+  {
+    "id": "el-rescate",
+    "title": "El Rescate",
+    "emoji": "🏰",
+    "description": "Javi debe salvar a Leo y Nara del Duende Gruñón.",
+    "path": "el-rescate/index.html",
+    "tags": ["aventura"],
+    "status": "ready"
+  },
+  {
+    "id": "javi-rescate",
+    "title": "Javi: Rescate de Leo y Nara",
+    "emoji": "👨‍👧‍👦",
+    "description": "10 niveles, un papá y una misión épica.",
+    "path": "javi-rescate/index.html",
+    "tags": ["aventura"],
+    "status": "ready"
+  },
+  {
+    "id": "otro-juego",
+    "title": "Zorro — Supervivencia",
+    "emoji": "🦊",
+    "description": "Un zorro debe sobrevivir en el bosque.",
+    "path": "otro-juego/index.html",
+    "tags": ["aventura"],
+    "status": "ready"
+  },
+  {
+    "id": "tengo-hambre",
+    "title": "Tengo Hambre",
+    "emoji": "🍽️",
+    "description": "¿Qué comemos hoy? ¡Ruleta de comida!",
+    "path": "tengo-hambre/index.html",
+    "tags": ["divertido"],
+    "status": "ready"
+  },
+  {
+    "id": "el-pipi/tengo-sed",
+    "title": "Tengo Sed",
+    "emoji": "🥤",
+    "description": "¿Qué bebemos hoy? ¡Déjalo al azar!",
+    "path": "el-pipi/tengo-sed/index.html",
+    "tags": ["divertido"],
+    "status": "ready"
+  },
+  {
+    "id": "3enraya",
+    "title": "3 en Raya",
+    "emoji": "⭕",
+    "description": "¡Próximamente! El clásico tres en raya.",
+    "path": "3enraya/index.html",
+    "tags": ["pronto"],
+    "status": "soon"
+  },
+  {
+    "id": "zorro",
+    "title": "Zorro",
+    "emoji": "🦊",
+    "description": "¡Próximamente! Nueva aventura del zorro.",
+    "path": "zorro/index.html",
+    "tags": ["pronto"],
+    "status": "soon"
+  }
+]

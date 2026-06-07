@@ -1,6 +1,10 @@
 # Leo Projects
 
-Colección de proyectos y juegos personales.
+Colección de proyectos y juegos personales de Leo.
+
+## 🌐 LeoCepa.com
+
+La web principal está en [`leocepa-com/`](leocepa-com/) — abre `index.html` en la raíz del repo para verla.
 
 ## Proyectos
 
@@ -16,3 +20,4 @@ Colección de proyectos y juegos personales.
 | `pedos-rey-javi` | Juego |
 | `tengo-hambre` | App web |
 | `zorro` | Proyecto |
+| `leocepa-com` | Web personal LeoCepa.com |
