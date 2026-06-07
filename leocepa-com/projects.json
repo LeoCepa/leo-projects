@@ -79,10 +79,10 @@
     "id": "3enraya",
     "title": "3 en Raya",
     "emoji": "⭕",
-    "description": "¡Próximamente! El clásico tres en raya.",
+    "description": "Tres en raya neon con chat, torneo, CPU y efectos de sonido.",
     "path": "3enraya/index.html",
-    "tags": ["pronto"],
-    "status": "soon"
+    "tags": ["divertido"],
+    "status": "ready"
   },
   {
     "id": "zorro",
