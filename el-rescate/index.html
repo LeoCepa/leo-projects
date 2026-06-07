@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Rescate — Javi salva a Leo y Nara</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game" width="800" height="480"></canvas>
+    <div id="overlay">
+      <div id="menu" class="panel">
+        <h1>EL RESCATE</h1>
+        <p class="subtitle">Javi debe salvar a Leo y Nara</p>
+        <div class="story">
+          <p>Leo y Nara están atrapados en el castillo del Duende Gruñón.</p>
+          <p>¡Solo papá Javi puede rescatarlos!</p>
+        </div>
+        <div class="controls-info">
+          <p><kbd>←</kbd> <kbd>→</kbd> Correr</p>
+          <p><kbd>Espacio</kbd> Saltar (mantén para saltar más alto)</p>
+          <p>¡Salta sobre los duendes gruñones!</p>
+        </div>
+        <button id="btn-start">¡A rescatar!</button>
+      </div>
+      <div id="level-complete" class="panel hidden">
+        <h2 id="level-title">¡Nivel completado!</h2>
+        <p id="level-message"></p>
+        <button id="btn-next">Siguiente nivel</button>
+      </div>
+      <div id="game-over" class="panel hidden">
+        <h2>¡Oh no!</h2>
+        <p>Javi volverá al inicio de este nivel con 3 vidas.</p>
+        <button id="btn-retry">Intentar de nuevo</button>
+      </div>
+      <div id="victory" class="panel hidden">
+        <h2>¡FAMILIA REUNIDA!</h2>
+        <p>Javi ha rescatado a Leo y Nara.</p>
+        <p class="heart">❤️ Todos juntos otra vez ❤️</p>
+        <button id="btn-replay">Jugar otra vez</button>
+      </div>
+    </div>
+    <div id="hud">
+      <span id="hud-level">El Bosque Soleado</span>
+      <span id="hud-stars">⭐ 00</span>
+      <span id="hud-lives">❤️❤️❤️</span>
+      <span id="hud-rescued"></span>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

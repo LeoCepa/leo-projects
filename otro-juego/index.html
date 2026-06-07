@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zorro — Supervivencia</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game" width="640" height="360"></canvas>
+    <div id="overlay">
+      <div id="hud" class="hidden">
+        <div class="hud-row">
+          <span>Hambre</span>
+          <div class="bar"><div id="hunger-bar"></div></div>
+        </div>
+        <div class="hud-row">
+          <span>Miedo</span>
+          <div class="bar"><div id="fear-bar"></div></div>
+        </div>
+      </div>
+      <p id="subtitle"></p>
+      <p id="hint" class="hidden">Pulsa ESPACIO para continuar</p>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

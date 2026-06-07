@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Pipi — Menú</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(160deg, #ff6b35 0%, #f7931e 25%, #00b4d8 75%, #0077b6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .menu {
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      margin-bottom: 0.35rem;
+    }
+
+    .subtitle {
+      color: rgba(255, 255, 255, 0.92);
+      margin-bottom: 2rem;
+      font-size: 1.05rem;
+    }
+
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .card {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      padding: 1.25rem 1.5rem;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: 0 10px 36px rgba(0, 0, 0, 0.15);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 44px rgba(0, 0, 0, 0.22);
+    }
+
+    .card:active {
+      transform: translateY(-1px);
+    }
+
+    .card-icon {
+      font-size: 3rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .card-text {
+      text-align: left;
+    }
+
+    .card-text h2 {
+      font-size: 1.35rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .card-text p {
+      font-size: 0.95rem;
+      color: #555;
+      line-height: 1.4;
+    }
+
+    .card.hambre h2 { color: #c44d00; }
+    .card.sed h2 { color: #0077b6; }
+
+    .footer {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .footer a {
+      color: #fff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="menu">
+    <h1>¿Qué necesitas?</h1>
+    <p class="subtitle">Elige una app y deja que el azar decida.</p>
+
+    <div class="cards">
+      <a class="card hambre" href="tengo-hambre/index.html">
+        <span class="card-icon">🍽️</span>
+        <div class="card-text">
+          <h2>Tengo Hambre</h2>
+          <p>20 segundos de platos aleatorios. Al final, ¡tu comida del día!</p>
+        </div>
+      </a>
+
+      <a class="card sed" href="tengo-sed/index.html">
+        <span class="card-icon">🥤</span>
+        <div class="card-text">
+          <h2>Tengo Sed</h2>
+          <p>20 segundos de bebidas aleatorias. Al final, ¡tu bebida del día!</p>
+        </div>
+      </a>
+    </div>
+
+    <p class="footer">
+      También: <a href="index.html">Los Pipis Míticos</a>
+    </p>
+  </div>
+</body>
+</html>

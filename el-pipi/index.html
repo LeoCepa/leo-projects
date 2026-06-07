@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Los Pipis Míticos</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-app">
+  <div id="game-container">
+    <header>
+      <h1>💦 Los Pipis Míticos</h1>
+      <p class="subtitle">La segunda parte de la saga de Valentín</p>
+    </header>
+
+    <div id="hud">
+      <div class="hud-item">
+        <span class="label">❤️ Vida</span>
+        <div class="bar-wrap"><div id="hp-bar" class="bar hp"></div></div>
+        <span id="hp-text">100/100</span>
+      </div>
+      <div class="hud-item">
+        <span class="label">💦 Pipis</span>
+        <span id="pipi-count">0 / 7</span>
+      </div>
+      <div class="hud-item">
+        <span class="label">🗺️ Etapa</span>
+        <span id="level-stage">Nivel 1/7</span>
+      </div>
+      <div class="hud-item">
+        <span class="label">📍 Zona</span>
+        <span id="zone-name">Ciudad Dorada</span>
+      </div>
+      <div class="hud-item">
+        <span class="label">⭐ Poder</span>
+        <span id="player-level">Nv.1</span>
+      </div>
+      <div class="hud-item">
+        <span id="attack-text">⚔️ 25</span>
+      </div>
+      <div class="hud-item">
+        <span class="label">💀 Kills</span>
+        <span id="kill-text">0</span>
+      </div>
+      <button id="btn-sound" class="icon-btn" title="Silenciar (M)">🔊</button>
+    </div>
+
+    <div id="game-wrap">
+      <canvas id="game" width="800" height="500"></canvas>
+    </div>
+
+    <div id="controls">
+      <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> o <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> mover ·
+      <kbd>Espacio</kbd> atacar / interactuar / continuar · <kbd>Enter</kbd> pantalla completa · <kbd>X</kbd> saltar (fosos) · <kbd>M</kbd> sonido
+    </div>
+
+    <div id="inventory">
+      <h3>Inventario de Pipis Míticos</h3>
+      <ul id="pipi-list"></ul>
+    </div>
+  </div>
+
+  <div id="screen-intro" class="screen active">
+    <div class="screen-content story-intro">
+      <div class="title-art">💛💦✨</div>
+      <h2>Continuación…</h2>
+      <p class="story-line">Tras derrotar a las cacas y convertirse en <strong>Rey del Estiércol</strong>, Valentín pensó que todo había terminado.</p>
+      <p class="story-line">Pero entonces apareció una nueva amenaza en el mundo: los <strong>Pipis Míticos</strong>.</p>
+      <p class="story-line">Criaturas doradas y legendarias, cada una guardada por un jefe pipi tras un muro sagrado.</p>
+      <p class="story-line">Valentín sabía que si reunía los siete pipis se convertiría en el <strong>Emperador del Dorado</strong>.</p>
+      <p class="story-hero">¡La aventura continúa!</p>
+      <button id="btn-continue-intro" class="btn-continue">▶ Continuar partida</button>
+      <button id="btn-intro">Ir al menú <span class="key-hint">[Espacio]</span></button>
+    </div>
+  </div>
+
+  <div id="screen-menu" class="screen">
+    <div class="screen-content">
+      <div class="title-art">💦⚔️👑</div>
+      <h2>Los Pipis Míticos</h2>
+      <p>Eres <strong>Valentín el Valiente</strong>, ahora cazador de pipis legendarios.</p>
+      <p>Atraviesa <strong>7 niveles únicos</strong>. Derrota al jefe pipi, abre el muro sagrado, recoge el Pipi Mítico y sal por el portal.</p>
+      <button id="btn-continue" class="btn-continue">▶ Continuar partida</button>
+      <button id="btn-start">🆕 Partida nueva — Nivel 1</button>
+      <button id="btn-story" class="btn-secondary btn-story">✨ Ver historia</button>
+      <button id="btn-prequel-menu" class="btn-secondary btn-story">💩 Primera parte — Las 7 Cacas</button>
+      <p class="menu-label">Seleccionar nivel desbloqueado:</p>
+      <div id="level-select" class="level-select"></div>
+    </div>
+  </div>
+
+  <div id="screen-level-complete" class="screen">
+    <div class="screen-content level-complete">
+      <div class="title-art">✅💦</div>
+      <h2>¡Nivel <span id="level-complete-num">1</span> completado!</h2>
+      <p id="level-complete-name">Ciudad Dorada</p>
+      <p id="level-complete-pipi">☀️💦 Pipi Solar conseguido</p>
+      <p id="level-complete-next" class="next-level">Siguiente: Nivel 2 — Caverna de Ecos</p>
+      <button id="btn-continue-level" class="btn-continue">▶ Continuar → <span class="key-hint">[Espacio]</span></button>
+    </div>
+  </div>
+
+  <div id="screen-dialog" class="screen">
+    <div class="screen-content dialog-box">
+      <h3 id="dialog-title"></h3>
+      <p id="dialog-text"></p>
+      <button id="btn-dialog">Continuar <span class="key-hint">[Espacio]</span></button>
+    </div>
+  </div>
+
+  <div id="screen-victory" class="screen">
+    <div class="screen-content victory">
+      <div class="title-art">👑💦✨</div>
+      <h2>¡Victoria Dorada!</h2>
+      <p>Has reunido los 7 Pipis Míticos. El reino te aclama como <strong>Emperador del Dorado</strong>.</p>
+      <p id="victory-time"></p>
+      <button id="btn-restart">Ver desenlace → <span class="key-hint">[Espacio]</span></button>
+    </div>
+  </div>
+
+  <div id="screen-epilogue" class="screen">
+    <div class="screen-content story-intro epilogue">
+      <div class="title-art">👑💦✨</div>
+      <h2>Desenlace</h2>
+      <p class="story-line">Valentín reunió los siete Pipis Míticos y se coronó <strong>Emperador del Dorado</strong>.</p>
+      <p class="story-line">El reino brillaba con luz dorada. Las gotas legendarias adornaban su trono…</p>
+      <p class="story-line">Pero en lo más profundo del castillo, un olor familiar anunciaba una nueva amenaza: <strong>el Rey Javi</strong> y sus legendarios pedos.</p>
+      <p class="epilogue-twist">¡¡¡LOS PEDOS DEL REY JAVI!!! 💨👑</p>
+      <p class="story-line epilogue-hint">La saga continúa en el palacio real…</p>
+      <div class="epilogue-actions">
+        <button id="btn-continue-epilogue" class="btn-continue">▶ Continuar — Los Pedos del Rey Javi</button>
+        <button id="btn-sequel-pedos" class="btn-sequel">💨 Empezar Los Pedos del Rey Javi</button>
+        <button id="btn-prequel-epilogue" class="btn-secondary btn-story">💩 Volver a Las 7 Cacas Maestras</button>
+        <button id="btn-epilogue" class="btn-secondary">🆕 Jugar de Nuevo — Pipis</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-gameover" class="screen">
+    <div class="screen-content gameover">
+      <h2>💀 Game Over</h2>
+      <p>Valentín ha caído ante los pipis míticos...</p>
+      <div class="gameover-actions">
+        <button id="btn-continue-gameover" class="btn-continue">▶ Continuar partida</button>
+        <button id="btn-retry">Reintentar nivel <span class="key-hint">[Espacio]</span></button>
+        <button id="btn-menu" class="btn-secondary">Menú principal</button>
+      </div>
+    </div>
+  </div>
+  </div>
+
+  <script src="sounds.js"></script>
+  <script src="maps.js"></script>
+  <script src="graphics.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

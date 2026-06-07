@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tengo Sed</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🥤 Tengo Sed</h1>
+      <p class="subtitle">¿Qué tomamos? Déjalo al azar.</p>
+    </header>
+
+    <main>
+      <div id="start-screen" class="screen active">
+        <p class="intro">Pulsa el botón y durante <strong>20 segundos</strong> verás bebidas aleatorias. Al final, ¡tu bebida del día!</p>
+        <button id="btn-start" class="btn-primary">¡Tengo sed!</button>
+      </div>
+
+      <div id="game-screen" class="screen">
+        <div class="timer-wrap">
+          <div class="timer-bar-bg">
+            <div id="timer-bar" class="timer-bar"></div>
+          </div>
+          <span id="timer-text" class="timer-text">20s</span>
+        </div>
+
+        <div class="drink-wrap">
+          <div id="glass" class="glass">
+            <img id="drink-photo" class="drink-photo" src="" alt="Bebida">
+          </div>
+          <h2 id="drink-name" class="drink-name">Agua</h2>
+        </div>
+
+        <p id="status" class="status">Eligiendo tu bebida...</p>
+      </div>
+
+      <div id="result-screen" class="screen">
+        <p class="result-label">¡Tu bebida es!</p>
+        <div class="drink-wrap">
+          <div class="glass glass-final">
+            <img id="final-photo" class="drink-photo" src="" alt="Bebida">
+          </div>
+          <h2 id="final-name" class="drink-name">Agua</h2>
+        </div>
+        <button id="btn-retry" class="btn-primary">Otra vez</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

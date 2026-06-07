@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tengo Hambre</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>🍽️ Tengo Hambre</h1>
+      <p class="subtitle">¿Qué comemos hoy? Déjalo al azar.</p>
+    </header>
+
+    <main>
+      <div id="start-screen" class="screen active">
+        <p class="intro">Pulsa el botón y durante <strong>20 segundos</strong> verás platos aleatorios. Al final, ¡tu comida del día!</p>
+        <button id="btn-start" class="btn-primary">¡Tengo hambre!</button>
+      </div>
+
+      <div id="game-screen" class="screen">
+        <div class="timer-wrap">
+          <div class="timer-bar-bg">
+            <div id="timer-bar" class="timer-bar"></div>
+          </div>
+          <span id="timer-text" class="timer-text">20s</span>
+        </div>
+
+        <div class="dish-wrap">
+          <div id="plate" class="plate">
+            <img id="food-photo" class="food-photo" src="" alt="Pizza">
+          </div>
+          <h2 id="food-name" class="food-name">Pizza</h2>
+        </div>
+
+        <p id="status" class="status">Eligiendo tu plato...</p>
+      </div>
+
+      <div id="result-screen" class="screen">
+        <p class="result-label">¡Tu plato es!</p>
+        <div class="dish-wrap">
+          <div class="plate plate-final">
+            <img id="final-photo" class="food-photo" src="" alt="Pizza">
+          </div>
+          <h2 id="final-name" class="food-name">Pizza</h2>
+        </div>
+        <button id="btn-retry" class="btn-primary">Otra vez</button>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

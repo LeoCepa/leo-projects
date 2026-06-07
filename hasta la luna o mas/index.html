@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hasta la luna o más</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; }
+      #game { width: 100%; height: 100%; }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js"></script>
+    <script>
+      const GAME_WIDTH = 480;
+      const GAME_HEIGHT = 720;
+
+      const PLAYER_CFG = {
+        width: 28, height: 36, speed: 220,
+        jumpVelocity: -420, doubleJumpVelocity: -380,
+        gravity: 900, maxFallSpeed: 600,
+      };
+
+      const WORLD = {
+        platformMinWidth: 90, platformMaxWidth: 170, platformHeight: 14,
+        verticalGapMin: 65, verticalGapMax: 112, horizontalMargin: 36,
+        dangerZoneOffset: 120,
+      };
+
+      // Alcance máximo del jugador (doble salto + movimiento lateral)
+      const JUMP_REACH = {
+        maxVertical: 165,
+        maxHorizontal: 175,
+      };
+
+      function maxHorizontalReach(verticalGap) {
+        const t = Phaser.Math.Clamp(verticalGap / WORLD.verticalGapMax, 0, 1);
+        return Phaser.Math.Linear(JUMP_REACH.maxHorizontal, 95, t);
+      }
+
+      const ALTITUDE = { metersPerPixel: 0.5, moonThreshold: 100000 };
+      const BEST_KEY = "hasta-la-luna-best";
+
+      const ZONES = [
+        { name: "Tierra", minMeters: 0, topColor: 0x87ceeb, bottomColor: 0x5d8a3c, platformColor: 0x6b4f2a, accentColor: 0x8fbc5a },
+        { name: "Cielo", minMeters: 500, topColor: 0x1e90ff, bottomColor: 0x87ceeb, platformColor: 0x4a7ab5, accentColor: 0xa8d8ff },
+        { name: "Nubes", minMeters: 2000, topColor: 0xb8d4f0, bottomColor: 0xe8f4ff, platformColor: 0xc8d8e8, accentColor: 0xffffff },
+        { name: "Estratosfera", minMeters: 5000, topColor: 0x1a0a3e, bottomColor: 0x4a2080, platformColor: 0x5c3d8a, accentColor: 0xc77dff },
+        { name: "Espacio", minMeters: 15000, topColor: 0x000008, bottomColor: 0x0a0a2e, platformColor: 0x2a2a4a, accentColor: 0x88ccff },
+        { name: "Hacia la luna", minMeters: 50000, topColor: 0x000005, bottomColor: 0x101025, platformColor: 0x4a4a5a, accentColor: 0xe8e8f0 },
+        { name: "La luna", minMeters: 100000, topColor: 0x0a0a12, bottomColor: 0x2a2a35, platformColor: 0x6a6a75, accentColor: 0xf0f0f5 },
+      ];
+
+      function getZoneForAltitude(meters) {
+        let zone = ZONES[0];
+        for (const z of ZONES) if (meters >= z.minMeters) zone = z;
+        return zone;
+      }
+
+      function formatAltitude(meters) {
+        if (meters >= 1000000) return (meters / 1000000).toFixed(2) + " Mm";
+        if (meters >= 10000) return (meters / 1000).toFixed(1) + " km";
+        if (meters >= 1000) return (meters / 1000).toFixed(2) + " km";
+        return Math.floor(meters) + " m";
+      }
+
+      class Player {
+        constructor(scene, x, y) {
+          this.scene = scene;
+          this.sprite = scene.add.rectangle(x, y, PLAYER_CFG.width, PLAYER_CFG.height, 0xff6b4a);
+          this.sprite.setStrokeStyle(2, 0xffaa88);
+          scene.physics.add.existing(this.sprite);
+          this.body = this.sprite.body;
+          this.body.setCollideWorldBounds(false);
+          this.body.setMaxVelocity(PLAYER_CFG.speed, PLAYER_CFG.maxFallSpeed);
+          this.body.setGravityY(PLAYER_CFG.gravity);
+          this.body.setSize(PLAYER_CFG.width - 4, PLAYER_CFG.height - 2);
+          this.jumpsLeft = 2;
+          this.wasOnGround = false;
+          this.facing = 1;
+        }
+
+        update(cursors, keys) {
+          const left = cursors.left.isDown || keys.A.isDown;
+          const right = cursors.right.isDown || keys.D.isDown;
+          const jumpPressed =
+            Phaser.Input.Keyboard.JustDown(cursors.up) ||
+            Phaser.Input.Keyboard.JustDown(keys.W) ||
+            Phaser.Input.Keyboard.JustDown(keys.SPACE);
+
+          if (left) { this.body.setVelocityX(-PLAYER_CFG.speed); this.facing = -1; }
+          else if (right) { this.body.setVelocityX(PLAYER_CFG.speed); this.facing = 1; }
+          else { this.body.setVelocityX(this.body.velocity.x * 0.82); }
+
+          const onGround = this.body.blocked.down || this.body.touching.down;
+          if (onGround && !this.wasOnGround) this.jumpsLeft = 2;
+          this.wasOnGround = onGround;
+
+          if (jumpPressed && this.jumpsLeft > 0) {
+            const vel = this.jumpsLeft === 2 ? PLAYER_CFG.jumpVelocity : PLAYER_CFG.doubleJumpVelocity;
+            this.body.setVelocityY(vel);
+            this.jumpsLeft--;
+          }
+          this.sprite.setScale(this.facing, 1);
+        }
+
+        get x() { return this.sprite.x; }
+        get y() { return this.sprite.y; }
+
+        reset(x, y) {
+          this.sprite.setPosition(x, y);
+          this.body.setVelocity(0, 0);
+          this.jumpsLeft = 2;
+          this.wasOnGround = false;
+        }
+      }
+
+      class WorldGenerator {
+        constructor(scene, platformGroup, startY) {
+          this.scene = scene;
+          this.platformGroup = platformGroup;
+          this.platforms = [];
+          this.zone = getZoneForAltitude(0);
+
+          const first = this.createPlatform(startY, GAME_WIDTH / 2, 150, "normal");
+          this.platforms.push(first);
+
+          for (let i = 0; i < 17; i++) {
+            this.spawnNextPlatform(this.getTopPlatform());
+          }
+        }
+
+        getTopPlatform() {
+          return this.platforms.reduce((top, p) => (p.sprite.y < top.sprite.y ? p : top));
+        }
+
+        pickType(altitudeMeters) {
+          const roll = Math.random();
+          if (altitudeMeters > 3000 && roll < 0.1) return "moving";
+          if (altitudeMeters > 1000 && roll < 0.15) return "fragile";
+          return "normal";
+        }
+
+        createPlatform(y, x, width, type) {
+          const altitudeMeters = Math.max(0, -y * 0.5);
+          const zone = getZoneForAltitude(altitudeMeters);
+          let color = zone.platformColor;
+          if (type === "fragile") color = 0xc97b5a;
+          if (type === "moving") color = 0x5ab8c9;
+
+          const sprite = this.scene.add.rectangle(x, y, width, WORLD.platformHeight, color);
+          sprite.setStrokeStyle(2, zone.accentColor, 0.6);
+          this.platformGroup.add(sprite);
+          sprite.body.updateFromGameObject();
+
+          const data = { sprite, body: sprite.body, type };
+          if (type === "moving") {
+            data.moveSpeed = Phaser.Math.Between(35, 70);
+            data.moveDir = Math.random() < 0.5 ? -1 : 1;
+            const halfW = width / 2;
+            data.moveMin = WORLD.horizontalMargin + halfW;
+            data.moveMax = this.scene.scale.width - WORLD.horizontalMargin - halfW;
+          }
+          if (type === "fragile") data.hitsLeft = 1;
+          return data;
+        }
+
+        spawnNextPlatform(prev) {
+          const gap = Phaser.Math.Between(WORLD.verticalGapMin, WORLD.verticalGapMax);
+          const y = prev.sprite.y - gap;
+          const reach = maxHorizontalReach(gap);
+          const width = Phaser.Math.Between(WORLD.platformMinWidth, WORLD.platformMaxWidth);
+          const halfW = width / 2;
+          const screenW = this.scene.scale.width;
+
+          let minX = prev.sprite.x - reach;
+          let maxX = prev.sprite.x + reach;
+          const screenMin = WORLD.horizontalMargin + halfW;
+          const screenMax = screenW - WORLD.horizontalMargin - halfW;
+
+          minX = Phaser.Math.Clamp(minX, screenMin, screenMax);
+          maxX = Phaser.Math.Clamp(maxX, screenMin, screenMax);
+
+          let x;
+          if (minX > maxX) {
+            x = Phaser.Math.Clamp(prev.sprite.x, screenMin, screenMax);
+          } else {
+            x = Phaser.Math.Between(minX, maxX);
+          }
+
+          const altitudeMeters = Math.max(0, -y * 0.5);
+          const type = this.pickType(altitudeMeters);
+          const data = this.createPlatform(y, x, width, type);
+          this.platforms.push(data);
+          return data;
+        }
+
+        update(playerY, altitudeMeters) {
+          this.zone = getZoneForAltitude(altitudeMeters);
+          const targetY = playerY - this.scene.scale.height * 1.5;
+          while (this.getTopPlatform().sprite.y > targetY) {
+            this.spawnNextPlatform(this.getTopPlatform());
+          }
+          const cullY = playerY + this.scene.scale.height + 200;
+          this.platforms = this.platforms.filter((p) => {
+            if (p.sprite.y < cullY) return true;
+            p.sprite.destroy();
+            return false;
+          });
+          for (const p of this.platforms) {
+            if (p.type === "moving" && p.moveSpeed) {
+              p.sprite.x += p.moveSpeed * p.moveDir * (this.scene.game.loop.delta / 1000);
+              if (p.sprite.x <= p.moveMin) { p.sprite.x = p.moveMin; p.moveDir = 1; }
+              else if (p.sprite.x >= p.moveMax) { p.sprite.x = p.moveMax; p.moveDir = -1; }
+              p.body.updateFromGameObject();
+            }
+          }
+        }
+
+        getPlatforms() { return this.platforms; }
+
+        onPlayerLand(platform) {
+          if (platform.type === "fragile") {
+            platform.hitsLeft = (platform.hitsLeft || 1) - 1;
+            if (platform.hitsLeft <= 0) {
+              this.scene.tweens.add({
+                targets: platform.sprite, alpha: 0, scaleX: 0.5, duration: 200,
+                onComplete: () => {
+                  platform.sprite.destroy();
+                  this.platforms = this.platforms.filter((p) => p !== platform);
+                },
+              });
+            }
+          }
+        }
+
+        destroy() {
+          for (const p of this.platforms) p.sprite.destroy();
+          this.platforms = [];
+        }
+      }
+
+      class GameScene extends Phaser.Scene {
+        constructor() { super("GameScene"); }
+
+        create() {
+          this.state = "menu";
+          this.altitudeMeters = 0;
+          this.bestMeters = Number(localStorage.getItem(BEST_KEY) || 0);
+          this.stars = [];
+
+          this.bgGraphics = this.add.graphics().setScrollFactor(0).setDepth(-10);
+          for (let i = 0; i < 120; i++) {
+            this.stars.push({
+              x: Math.random() * GAME_WIDTH, y: Math.random() * GAME_HEIGHT,
+              size: Math.random() * 2 + 0.5, alpha: Math.random() * 0.7 + 0.3,
+            });
+          }
+
+          this.moonSprite = this.add.circle(GAME_WIDTH * 0.75, GAME_HEIGHT * 0.25, 48, 0xd8d8e0)
+            .setScrollFactor(0).setDepth(-5).setAlpha(0);
+
+          this.platformGroup = this.physics.add.staticGroup();
+          const startY = GAME_HEIGHT - 120;
+          this.world = new WorldGenerator(this, this.platformGroup, startY);
+          this.player = new Player(this, GAME_WIDTH / 2, startY - 60);
+
+          this.physics.add.collider(
+            this.player.sprite, this.platformGroup,
+            (_player, platform) => {
+              const body = this.player.body;
+              if (body.velocity.y >= 0 && body.bottom <= platform.y + 8) {
+                const pdata = this.world.getPlatforms().find((p) => p.sprite === platform);
+                if (pdata) this.world.onPlayerLand(pdata);
+              }
+            },
+            (_player, platform) => {
+              const body = this.player.body;
+              return body.velocity.y >= 0 && body.bottom <= platform.y + 10;
+            }
+          );
+
+          this.cursors = this.input.keyboard.createCursorKeys();
+          this.keys = this.input.keyboard.addKeys("W,A,S,D,SPACE");
+
+          const textStyle = { fontFamily: "Segoe UI, sans-serif", color: "#ffffff" };
+          this.hudAltitude = this.add.text(16, 16, "", { ...textStyle, fontSize: "28px" })
+            .setScrollFactor(0).setDepth(10).setShadow(2, 2, "#000000", 4);
+          this.hudZone = this.add.text(16, 52, "", { fontFamily: "Segoe UI, sans-serif", fontSize: "16px", color: "#ccccdd" })
+            .setScrollFactor(0).setDepth(10);
+          this.hudBest = this.add.text(GAME_WIDTH - 16, 16, "", { fontFamily: "Segoe UI, sans-serif", fontSize: "14px", color: "#aaaacc" })
+            .setScrollFactor(0).setOrigin(1, 0).setDepth(10);
+          this.overlayText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, "", { ...textStyle, fontSize: "36px", align: "center" })
+            .setScrollFactor(0).setOrigin(0.5).setDepth(20).setShadow(3, 3, "#000000", 6);
+          this.subText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, "", { fontFamily: "Segoe UI, sans-serif", fontSize: "16px", color: "#bbbccc", align: "center" })
+            .setScrollFactor(0).setOrigin(0.5).setDepth(20);
+
+          this.input.keyboard.on("keydown-SPACE", () => {
+            if (this.state === "menu" || this.state === "gameover") this.startGame();
+          });
+          this.input.on("pointerdown", () => {
+            if (this.state === "menu" || this.state === "gameover") this.startGame();
+          });
+
+          this.showMenu();
+        }
+
+        showMenu() {
+          this.state = "menu";
+          this.overlayText.setText("Hasta la luna\no más");
+          this.subText.setText("↑ o Espacio para saltar  ·  ← → para moverte\n\nPulsa Espacio o toca para empezar");
+          this.updateHud();
+        }
+
+        startGame() {
+          if (this.state === "playing") return;
+          this.world.destroy();
+          this.platformGroup.clear(true, true);
+          const startY = GAME_HEIGHT - 120;
+          this.world = new WorldGenerator(this, this.platformGroup, startY);
+          this.player.reset(GAME_WIDTH / 2, startY - 60);
+          this.altitudeMeters = 0;
+          this.state = "playing";
+          this.overlayText.setText("");
+          this.subText.setText("");
+          this.cameras.main.scrollY = 0;
+        }
+
+        endGame() {
+          this.state = "gameover";
+          if (this.altitudeMeters > this.bestMeters) {
+            this.bestMeters = this.altitudeMeters;
+            localStorage.setItem(BEST_KEY, String(this.bestMeters));
+          }
+          this.overlayText.setText("¡Caíste!");
+          this.subText.setText("Altura: " + formatAltitude(this.altitudeMeters) + "\n\nEspacio o toca para reintentar");
+        }
+
+        updateBackground() {
+          const zone = getZoneForAltitude(this.altitudeMeters);
+          const top = Phaser.Display.Color.IntegerToColor(zone.topColor);
+          const bottom = Phaser.Display.Color.IntegerToColor(zone.bottomColor);
+          this.bgGraphics.clear();
+          const steps = 24;
+          for (let i = 0; i < steps; i++) {
+            const t = i / (steps - 1);
+            const color = Phaser.Display.Color.GetColor(
+              Phaser.Math.Linear(top.red, bottom.red, t),
+              Phaser.Math.Linear(top.green, bottom.green, t),
+              Phaser.Math.Linear(top.blue, bottom.blue, t)
+            );
+            this.bgGraphics.fillStyle(color, 1);
+            this.bgGraphics.fillRect(0, (GAME_HEIGHT / steps) * i, GAME_WIDTH, GAME_HEIGHT / steps + 1);
+          }
+          if (this.altitudeMeters >= 10000) {
+            for (const star of this.stars) {
+              const twinkle = 0.5 + 0.5 * Math.sin(this.time.now * 0.003 + star.x);
+              this.bgGraphics.fillStyle(0xffffff, star.alpha * twinkle * Math.min(1, (this.altitudeMeters - 10000) / 5000));
+              this.bgGraphics.fillCircle(star.x, star.y, star.size);
+            }
+          }
+          const moonProgress = Phaser.Math.Clamp((this.altitudeMeters - 80000) / 20000, 0, 1);
+          this.moonSprite.setAlpha(moonProgress * 0.9);
+          this.moonSprite.setScale(0.6 + moonProgress * 0.6);
+        }
+
+        updateHud() {
+          const zone = getZoneForAltitude(this.altitudeMeters);
+          this.hudAltitude.setText(formatAltitude(this.altitudeMeters));
+          this.hudZone.setText(zone.name);
+          this.hudBest.setText("Récord: " + formatAltitude(this.bestMeters));
+        }
+
+        update() {
+          if (this.state !== "playing") {
+            this.updateBackground();
+            this.updateHud();
+            return;
+          }
+
+          this.player.update(this.cursors, this.keys);
+          const rawAltitude = Math.max(0, (GAME_HEIGHT - 120 - this.player.y) * ALTITUDE.metersPerPixel);
+          this.altitudeMeters = Math.max(this.altitudeMeters, rawAltitude);
+
+          const targetScrollY = this.player.y - GAME_HEIGHT * 0.45;
+          if (targetScrollY < this.cameras.main.scrollY) {
+            this.cameras.main.scrollY = Phaser.Math.Linear(this.cameras.main.scrollY, targetScrollY, 0.08);
+          }
+
+          const dangerY = this.cameras.main.scrollY + GAME_HEIGHT - WORLD.dangerZoneOffset;
+          if (this.player.y > dangerY) { this.endGame(); return; }
+
+          this.world.update(this.player.y, this.altitudeMeters);
+          this.updateBackground();
+          this.updateHud();
+
+          if (this.altitudeMeters >= ALTITUDE.moonThreshold) {
+            this.state = "gameover";
+            this.overlayText.setText("¡Llegaste a la luna!");
+            this.subText.setText(formatAltitude(this.altitudeMeters) + "\n\n¿Y si intentas ir aún más lejos?\nEspacio para reintentar");
+            if (this.altitudeMeters > this.bestMeters) {
+              this.bestMeters = this.altitudeMeters;
+              localStorage.setItem(BEST_KEY, String(this.bestMeters));
+            }
+          }
+        }
+      }
+
+      new Phaser.Game({
+        type: Phaser.AUTO,
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT,
+        parent: "game",
+        backgroundColor: "#0a0a1a",
+        physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false } },
+        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        scene: [GameScene],
+      });
+    </script>
+  </body>
+</html>
