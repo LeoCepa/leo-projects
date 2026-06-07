@@ -5,18 +5,21 @@ ctx.imageSmoothingEnabled = false;
 const TILE = 32;
 const GROUND_Y = 400;
 const GRAVITY = 0.5;
-const JUMP_VEL = -11;
-const ACCEL = 0.45;
-const MAX_SPEED = 4.6;
+const JUMP_VEL = -12;
+const ACCEL = 0.5;
+const MAX_SPEED = 5.5;
 const FRICTION = 0.82;
 const MAX_FALL = 12;
 
-const PULSE_RADIUS = 100;
-const PULSE_STUN = 150;
-const PULSE_COOLDOWN = 240;
-const DASH_SPEED = 9;
-const DASH_TIME = 12;
-const DASH_COOLDOWN = 90;
+const PULSE_RADIUS = 165;
+const PULSE_STUN = 300;
+const PULSE_COOLDOWN = 90;
+const DASH_SPEED = 11;
+const DASH_TIME = 22;
+const DASH_COOLDOWN = 40;
+const BOSS_PULSES = 2;
+const CHASE_RANGE = 80;
+const START_LIVES = 5;
 
 const STATE = {
   MENU: 'menu',
@@ -29,7 +32,7 @@ const STATE = {
 let state = STATE.MENU;
 let currentLevel = 0;
 let spheres = 0;
-let lives = 3;
+let lives = START_LIVES;
 let camera = { x: 0 };
 let particles = [];
 let pulseWaves = [];
@@ -73,7 +76,7 @@ function plat(x, y, w, h, type = 'floor') {
   return { x, y, w, h, type };
 }
 
-function obj(x, y, minX, maxX, kind, speed = 1.3) {
+function obj(x, y, minX, maxX, kind, speed = 0.75) {
   return {
     x, y, minX, maxX, kind, speed, dir: 1,
     w: kind === 'boss' ? 48 : kind === 'sofa' ? 40 : 28,
@@ -88,7 +91,7 @@ function resetHero(spawnX, spawnY) {
   hero.vx = 0;
   hero.vy = 0;
   hero.grounded = false;
-  hero.invincible = 90;
+  hero.invincible = 120;
   hero.pulseCd = 0;
   hero.dashCd = 0;
   hero.dashing = 0;
@@ -99,31 +102,28 @@ const LEVELS = [
   {
     name: 'Habitación Rebelde',
     theme: 'room',
-    width: 2200,
-    spawn: [48, GROUND_Y - 28],
-    message: 'Los peluches quieren reclutar a todo el barrio.',
+    width: 1960,
+    spawn: [72, GROUND_Y - 28],
+    message: 'Los peluches ocupan la cama y el estante. ¡La esfera está encima del armario!',
+    noPits: true,
     platforms: [
-      plat(0, GROUND_Y, 520, 80),
-      plat(600, GROUND_Y, 360, 80),
-      plat(1040, GROUND_Y, 400, 80),
-      plat(1500, GROUND_Y, 700, 80),
-      plat(240, 336, 96, 28),
-      plat(400, 304, 80, 28),
-      plat(680, 336, 128, 28),
-      plat(880, 272, 96, 28, 'shelf'),
-      plat(1120, 304, 64, 28),
-      plat(1280, 272, 96, 28, 'shelf'),
-      plat(1580, 336, 96, 28),
-      plat(1760, 304, 128, 28, 'shelf'),
+      plat(0, GROUND_Y, 1960, 80, 'bed'),
+      plat(320, 368, 200, 28, 'desk'),
+      plat(720, 368, 220, 28, 'toybox'),
+      plat(1120, 368, 200, 28, 'rug'),
+      plat(1380, 368, 96, 24, 'shelf'),
+      plat(1476, 336, 96, 24, 'shelf'),
+      plat(1572, 304, 96, 24, 'shelf'),
+      plat(1668, 272, 200, 28, 'wardrobe'),
     ],
     objects: [
-      obj(300, GROUND_Y - 28, 200, 480, 'teddy', 1.1),
-      obj(720, GROUND_Y - 28, 620, 920, 'block', 1.4),
-      obj(900, 272 - 28, 880, 960, 'teddy', 1.2),
-      obj(1180, GROUND_Y - 28, 1060, 1380, 'block', 1.5),
-      obj(1650, GROUND_Y - 28, 1520, 1900, 'teddy', 1.6),
+      obj(200, GROUND_Y - 28, 100, 400, 'teddy', 0.5),
+      obj(560, GROUND_Y - 28, 480, 720, 'block', 0.6),
+      obj(900, GROUND_Y - 28, 800, 1040, 'teddy', 0.55),
+      obj(1280, GROUND_Y - 28, 1160, 1420, 'block', 0.65),
+      obj(1520, 304 - 28, 1580, 1640, 'teddy', 0.55),
     ],
-    sphere: { x: 2080, y: GROUND_Y - 36, got: false },
+    sphere: { x: 1768, y: 272 - 40, got: false },
   },
   {
     name: 'Cocina Conquistadora',
@@ -147,12 +147,9 @@ const LEVELS = [
       plat(1960, 304, 96, 28, 'counter'),
     ],
     objects: [
-      obj(280, GROUND_Y - 28, 200, 440, 'spoon', 1.8),
-      obj(680, GROUND_Y - 28, 580, 880, 'spoon', 2),
-      obj(1080, 272 - 28, 1040, 1120, 'pot', 1.3),
-      obj(1320, GROUND_Y - 28, 980, 1380, 'spoon', 1.7),
-      obj(1580, GROUND_Y - 28, 1440, 1780, 'pot', 1.5),
-      obj(2000, GROUND_Y - 28, 1860, 2280, 'spoon', 2.2),
+      obj(680, GROUND_Y - 28, 580, 880, 'spoon', 0.8),
+      obj(1580, GROUND_Y - 28, 1440, 1780, 'pot', 0.7),
+      obj(2000, GROUND_Y - 28, 1860, 2280, 'spoon', 0.85),
     ],
     sphere: { x: 2280, y: GROUND_Y - 36, got: false },
   },
@@ -179,12 +176,11 @@ const LEVELS = [
       plat(2200, 272, 128, 28),
     ],
     objects: [
-      obj(360, GROUND_Y - 24, 280, 520, 'sofa', 0.9),
-      obj(780, GROUND_Y - 28, 660, 1020, 'remote', 1.6),
-      obj(1200, GROUND_Y - 28, 1120, 1540, 'tv', 1.2),
-      obj(1200, 272 - 28, 1120, 1300, 'remote', 1.8),
-      obj(1760, GROUND_Y - 24, 1660, 2060, 'sofa', 1),
-      obj(2280, GROUND_Y - 28, 2120, 2520, 'tv', 1.4),
+      obj(360, GROUND_Y - 24, 280, 520, 'sofa', 0.55),
+      obj(780, GROUND_Y - 28, 660, 1020, 'remote', 0.75),
+      obj(1200, GROUND_Y - 28, 1120, 1540, 'tv', 0.7),
+      obj(1760, GROUND_Y - 24, 1660, 2060, 'sofa', 0.6),
+      obj(2280, GROUND_Y - 28, 2120, 2520, 'tv', 0.75),
     ],
     sphere: { x: 2480, y: GROUND_Y - 36, got: false },
   },
@@ -210,12 +206,9 @@ const LEVELS = [
       plat(2020, 304, 96, 28, 'tile'),
     ],
     objects: [
-      obj(300, GROUND_Y - 28, 200, 460, 'towel', 2),
-      obj(680, GROUND_Y - 28, 600, 920, 'brush', 1.7),
-      obj(1120, GROUND_Y - 28, 1020, 1360, 'towel', 2.3),
-      obj(1120, 272 - 28, 1080, 1160, 'brush', 1.5),
-      obj(1620, GROUND_Y - 28, 1480, 1840, 'towel', 2.1),
-      obj(2100, GROUND_Y - 28, 1920, 2320, 'brush', 2),
+      obj(680, GROUND_Y - 28, 600, 920, 'brush', 0.75),
+      obj(1120, GROUND_Y - 28, 1020, 1360, 'towel', 0.85),
+      obj(2100, GROUND_Y - 28, 1920, 2320, 'brush', 0.8),
     ],
     sphere: { x: 2280, y: GROUND_Y - 36, got: false },
   },
@@ -239,7 +232,7 @@ const LEVELS = [
       plat(1760, 272, 96, 28),
     ],
     objects: [
-      obj(960, GROUND_Y - 44, 400, 1400, 'boss', 1.2),
+      obj(960, GROUND_Y - 44, 400, 1400, 'boss', 0.55),
     ],
     sphere: { x: 1840, y: GROUND_Y - 36, got: false },
   },
@@ -369,13 +362,22 @@ function updateHero() {
     }
   });
 
-  if (hero.y > canvas.height + 40) hurtHero();
+  if (levelData.noPits && hero.vy >= 0 && hero.x + hero.w > 0 && hero.x < levelData.width) {
+    const floorY = GROUND_Y - hero.h;
+    if (hero.y > floorY) {
+      hero.y = floorY;
+      hero.vy = 0;
+      hero.grounded = true;
+    }
+  } else if (hero.y > canvas.height + 40) {
+    hurtHero();
+  }
 
   hero.x = Math.max(0, Math.min(levelData.width - hero.w, hero.x));
   hero.anim++;
 
   const boss = levelData.objects.find((o) => o.kind === 'boss' && o.alive);
-  const sphereReady = !boss || boss.phase >= 4;
+  const sphereReady = !boss || boss.phase >= BOSS_PULSES;
 
   if (sphereReady && !levelData.sphere.got && rectsOverlap(hero, { x: levelData.sphere.x - 12, y: levelData.sphere.y - 12, w: 24, h: 24 })) {
     levelData.sphere.got = true;
@@ -403,6 +405,7 @@ function hurtHero() {
     return;
   }
   resetHero(levelData.spawn[0], levelData.spawn[1]);
+  hero.invincible = 180;
 }
 
 function updateObjects() {
@@ -417,29 +420,29 @@ function updateObjects() {
     const dist = Math.hypot(hx - ox, hy - oy);
 
     if (o.kind === 'boss') {
-      if (o.phase >= 3) o.speed = 0.4;
-      if (dist < 220 && o.phase < 3) {
-        o.x += (hx > ox ? 1 : -1) * o.speed * 1.8;
+      if (o.phase >= 1) o.speed = 0.25;
+      if (dist < 130 && o.phase < 1) {
+        o.x += (hx > ox ? 1 : -1) * o.speed * 1.1;
       } else {
         o.x += o.dir * o.speed;
       }
       if (o.x <= o.minX || o.x + o.w >= o.maxX) o.dir *= -1;
       o.shootCd--;
-      if (o.shootCd <= 0 && o.phase < 4) {
-        o.shootCd = 90 - o.phase * 15;
+      if (o.shootCd <= 0 && o.phase < BOSS_PULSES) {
+        o.shootCd = 200;
         const angle = Math.atan2(hy - oy, hx - ox);
         projectiles.push({
-          x: ox, y: oy, vx: Math.cos(angle) * 3.5, vy: Math.sin(angle) * 3.5,
-          life: 180, r: 6,
+          x: ox, y: oy, vx: Math.cos(angle) * 1.6, vy: Math.sin(angle) * 1.6,
+          life: 120, r: 4,
         });
       }
-      if (o.phase >= 4) o.stun = 9999;
+      if (o.phase >= BOSS_PULSES) o.stun = 9999;
       return;
     }
 
     const chaseKinds = ['towel', 'brush', 'remote', 'block'];
-    if (chaseKinds.includes(o.kind) && dist < 160) {
-      o.x += (hx > ox ? 1 : -1) * o.speed * 1.4;
+    if (chaseKinds.includes(o.kind) && dist < CHASE_RANGE) {
+      o.x += (hx > ox ? 1 : -1) * o.speed * 0.85;
     } else {
       o.x += o.dir * o.speed;
     }
@@ -447,14 +450,13 @@ function updateObjects() {
     if (o.x <= o.minX) { o.x = o.minX; o.dir = 1; }
     if (o.x + o.w >= o.maxX) { o.x = o.maxX - o.w; o.dir = -1; }
 
-
-    if (o.kind === 'tv' && animFrame % 120 === 0) {
+    if (o.kind === 'tv' && animFrame % 260 === 0) {
       projectiles.push({
-        x: ox, y: oy, vx: hero.x > o.x ? 2.5 : -2.5, vy: -1, life: 120, r: 5,
+        x: ox, y: oy, vx: hero.x > o.x ? 1.5 : -1.5, vy: -0.6, life: 90, r: 4,
       });
     }
 
-    if (rectsOverlap(hero, o)) hurtHero();
+    if (rectsOverlap(hero, o) && o.stun <= 0) hurtHero();
   });
 }
 
@@ -464,7 +466,7 @@ function updateProjectiles() {
     p.y += p.vy;
     p.vy += 0.08;
     p.life--;
-    const hit = Math.hypot(p.x - (hero.x + hero.w / 2), p.y - (hero.y + hero.h / 2)) < p.r + 10;
+    const hit = Math.hypot(p.x - (hero.x + hero.w / 2), p.y - (hero.y + hero.h / 2)) < p.r + 3;
     if (hit && hero.invincible <= 0) hurtHero();
     return p.life > 0 && p.y < canvas.height + 20;
   });
@@ -520,13 +522,35 @@ function drawBackground(theme) {
   }
 }
 
+const PLATFORM_COLORS = {
+  room: {
+    floor: null,
+    bed: '#9b7cbf',
+    rug: '#e879a8',
+    desk: '#f5c16c',
+    shelf: '#c4a1ff',
+    toybox: '#ff9ecd',
+    wardrobe: '#7c5cbf',
+  },
+};
+
 function drawPlatforms(theme) {
   const c = THEME_COLORS[theme];
+  const extras = PLATFORM_COLORS[theme] || {};
   levelData.platforms.forEach((p) => {
-    ctx.fillStyle = p.type === 'floor' ? c.ground : c.accent + '88';
+    const custom = extras[p.type];
+    ctx.fillStyle = custom || (p.type === 'floor' ? c.ground : c.accent + '88');
     ctx.fillRect(p.x - camera.x, p.y, p.w, p.h);
     ctx.fillStyle = '#ffffff22';
     ctx.fillRect(p.x - camera.x, p.y, p.w, 4);
+    if (theme === 'room' && p.type === 'bed') {
+      ctx.fillStyle = '#ffffff18';
+      ctx.fillRect(p.x - camera.x + 16, p.y + 12, p.w - 32, 20);
+    }
+    if (theme === 'room' && p.type === 'wardrobe') {
+      ctx.fillStyle = '#ffffff15';
+      ctx.fillRect(p.x - camera.x + p.w / 2 - 2, p.y + 8, 4, p.h - 12);
+    }
   });
 }
 
@@ -562,7 +586,7 @@ function drawObjects() {
 function drawSphere() {
   if (levelData.sphere.got) return;
   const boss = levelData.objects.find((o) => o.kind === 'boss' && o.alive);
-  const locked = boss && boss.phase < 4;
+  const locked = boss && boss.phase < BOSS_PULSES;
   const s = levelData.sphere;
   const sx = s.x - camera.x;
   const bob = Math.sin(animFrame * 0.08) * 4;
@@ -571,7 +595,7 @@ function drawSphere() {
     ctx.font = '10px "Press Start 2P"';
     ctx.fillStyle = '#ff6b9d';
     ctx.textAlign = 'center';
-    ctx.fillText(`Pulsa E x${4 - boss.phase}`, sx, s.y - 24);
+    ctx.fillText(`Pulsa E x${BOSS_PULSES - boss.phase}`, sx, s.y - 24);
   }
   ctx.beginPath();
   ctx.arc(sx, s.y + bob, glow, 0, Math.PI * 2);
@@ -675,7 +699,7 @@ function hidePanels() {
 function startGame() {
   currentLevel = 0;
   spheres = 0;
-  lives = 3;
+  lives = START_LIVES;
   state = STATE.PLAYING;
   loadLevel(0);
   hidePanels();
@@ -691,7 +715,7 @@ function nextLevel() {
 }
 
 function retry() {
-  lives = 3;
+  lives = START_LIVES;
   state = STATE.PLAYING;
   loadLevel(currentLevel);
   hidePanels();
