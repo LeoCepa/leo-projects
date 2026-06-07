@@ -48,6 +48,7 @@ const gameArea = document.getElementById('game-area');
 const btnCreateRoom = document.getElementById('btn-create-room');
 const btnJoinRoom = document.getElementById('btn-join-room');
 const btnCopyLink = document.getElementById('btn-copy-link');
+const btnNewRoom = document.getElementById('btn-new-room');
 const btnCancelRoom = document.getElementById('btn-cancel-room');
 const roomCodeInput = document.getElementById('room-code-input');
 const roomCodeDisplay = document.getElementById('room-code-display');
@@ -302,27 +303,29 @@ function applySync({ board: b, currentPlayer: cp, gameOver: over }) {
   updateStatus();
 }
 
-function createRoom() {
+async function createRoom() {
   disconnectOnline();
   mode = 'online';
   modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === 'online'));
   updateUI();
-  tryCreateRoom();
+  await tryCreateRoom();
 }
 
-function tryCreateRoom(attempts = 0) {
+async function tryCreateRoom(attempts = 0) {
   roomCode = genRoomCode();
   onlineRole = 'host';
   myPlayer = 'X';
   roomCodeDisplay.textContent = roomCode;
-  onlineStatusEl.textContent = 'Esperando rival…';
   setOnlineLobbyState('waiting');
   history.replaceState(null, '', roomLink(roomCode));
+  await copyRoomLink();
 
   peer = new Peer(peerId(roomCode));
 
   peer.on('open', () => {
-    onlineStatusEl.textContent = 'Sala creada — comparte el enlace';
+    if (!onlineStatusEl.textContent.includes('copiado')) {
+      onlineStatusEl.textContent = 'Sala lista — esperando rival…';
+    }
   });
 
   peer.on('connection', (connection) => {
@@ -337,7 +340,7 @@ function tryCreateRoom(attempts = 0) {
   peer.on('error', (err) => {
     if (err.type === 'unavailable-id' && attempts < 5) {
       peer.destroy();
-      tryCreateRoom(attempts + 1);
+      tryCreateRoom(attempts + 1).catch(() => {});
       return;
     }
     showOnlineError('No se pudo crear la sala. Inténtalo de nuevo.');
@@ -385,15 +388,18 @@ function joinRoom(code) {
 }
 
 async function copyRoomLink() {
+  if (!roomCode) return false;
+
+  const url = roomLink(roomCode);
   try {
-    await navigator.clipboard.writeText(roomLink(roomCode));
-    onlineStatusEl.textContent = '¡Enlace copiado!';
+    await navigator.clipboard.writeText(url);
+    onlineStatusEl.textContent = '¡Enlace copiado! Envíaselo a tu rival';
     sfx.click();
-    setTimeout(() => {
-      if (!onlineConnected) onlineStatusEl.textContent = 'Esperando rival…';
-    }, 2000);
+    return true;
   } catch {
-    showOnlineError('No se pudo copiar. Copia el código manualmente.');
+    onlineStatusEl.textContent = `Sala ${roomCode} — copia la URL de arriba`;
+    showOnlineError('No se pudo copiar solo. Copia la URL de la barra del navegador.');
+    return false;
   }
 }
 
@@ -595,7 +601,8 @@ function bindEvents() {
   btnSound.addEventListener('click', () => sfx.toggle());
   btnNewTournament.addEventListener('click', () => { sfx.click(); startTournament(); });
 
-  btnCreateRoom.addEventListener('click', () => { sfx.click(); createRoom(); });
+  btnCreateRoom.addEventListener('click', () => createRoom());
+  btnNewRoom.addEventListener('click', () => createRoom());
   btnJoinRoom.addEventListener('click', () => {
     sfx.click();
     joinRoom(roomCodeInput.value);

@@ -415,6 +415,7 @@ body {
 }
 
 .online-panel__copy,
+.online-panel__new,
 .online-panel__cancel {
   width: 100%;
 }
