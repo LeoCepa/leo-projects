@@ -145,7 +145,8 @@ body {
 
 /* Mode selector */
 .mode-panel {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -155,8 +156,10 @@ body {
 }
 
 .mode-panel .mode-btn {
-  font-size: 0.85rem;
-  padding: 0.55rem 0.4rem;
+  font-size: 0.75rem;
+  padding: 0.55rem 0.25rem;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .mode-btn {
@@ -335,6 +338,140 @@ body {
   background: var(--o-color);
   border-color: var(--o-color);
   box-shadow: 0 0 8px var(--o-glow);
+}
+
+/* Online lobby */
+.online-panel {
+  width: 100%;
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: fade-in 0.3s ease;
+}
+
+.online-panel[hidden] {
+  display: none;
+}
+
+.online-panel__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.online-panel__create {
+  width: 100%;
+}
+
+.online-panel__join {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.online-panel__join .chat__input {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-family: 'Orbitron', sans-serif;
+  text-align: center;
+}
+
+.online-panel__waiting {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.online-panel__waiting[hidden] {
+  display: none;
+}
+
+.online-panel__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.online-panel__code {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+  letter-spacing: 0.25em;
+  color: var(--x-color);
+  text-shadow: 0 0 20px var(--x-glow);
+}
+
+.online-panel__status {
+  color: var(--muted);
+  font-size: 0.9rem;
+  animation: pulse-turn 1.5s ease-in-out infinite;
+}
+
+.online-panel__copy,
+.online-panel__cancel {
+  width: 100%;
+}
+
+.online-panel__error {
+  color: #ff6b6b;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* Online status bar */
+.online-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: rgba(0, 240, 255, 0.06);
+  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.online-bar[hidden] {
+  display: none;
+}
+
+.online-bar__badge {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  color: var(--x-color);
+}
+
+.online-bar__you { color: var(--x-color); }
+.online-bar__rival { color: var(--o-color); }
+
+.online-bar__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.6);
+  animation: pulse-turn 2s ease-in-out infinite;
+}
+
+.online-bar__dot--off {
+  background: #ff6b6b;
+  box-shadow: 0 0 8px rgba(255, 107, 107, 0.6);
+  animation: none;
+}
+
+.game-area--hidden {
+  opacity: 0.35;
+  pointer-events: none;
+  filter: blur(2px);
 }
 
 /* Scoreboard */

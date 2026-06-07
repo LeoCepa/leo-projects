@@ -40,6 +40,22 @@ const chatMessages = document.getElementById('chat-messages');
 const chatForm = document.getElementById('chat-form');
 const chatInput = document.getElementById('chat-input');
 const chatSenderBtns = document.querySelectorAll('.chat__sender-btn');
+const onlinePanel = document.getElementById('online-panel');
+const onlineMenu = document.getElementById('online-menu');
+const onlineWaiting = document.getElementById('online-waiting');
+const onlineBar = document.getElementById('online-bar');
+const gameArea = document.getElementById('game-area');
+const btnCreateRoom = document.getElementById('btn-create-room');
+const btnJoinRoom = document.getElementById('btn-join-room');
+const btnCopyLink = document.getElementById('btn-copy-link');
+const btnCancelRoom = document.getElementById('btn-cancel-room');
+const roomCodeInput = document.getElementById('room-code-input');
+const roomCodeDisplay = document.getElementById('room-code-display');
+const onlineStatusEl = document.getElementById('online-status');
+const onlineYouEl = document.getElementById('online-you');
+const onlineRivalEl = document.getElementById('online-rival');
+const connectionDot = document.getElementById('online-connection-dot');
+const chatSenderGroup = document.querySelector('.chat__sender');
 
 let board = Array(9).fill(null);
 let currentPlayer = 'X';
@@ -55,6 +71,15 @@ let particles = [];
 let animFrameId = null;
 let chatSender = 'X';
 const MAX_CHAT_MESSAGES = 50;
+
+let peer = null;
+let conn = null;
+let onlineRole = null;
+let myPlayer = null;
+let onlineConnected = false;
+let roomCode = '';
+let joinTimeoutId = null;
+const PEER_PREFIX = 'enraya-';
 
 /* ── Filtro de palabrotas ── */
 const BAD_WORDS = [
@@ -157,9 +182,253 @@ function censorMessage(text) {
   return { text: result, censored };
 }
 
+/* ── Online multijugador (WebRTC / PeerJS) ── */
+function isOnlineMode() {
+  return mode === 'online';
+}
+
+function peerId(code) {
+  return `${PEER_PREFIX}${code}`;
+}
+
+function genRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+function roomLink(code) {
+  const url = new URL(location.href);
+  url.searchParams.set('room', code);
+  return url.toString();
+}
+
+function showOnlineError(msg) {
+  let el = onlinePanel.querySelector('.online-panel__error');
+  if (!el) {
+    el = document.createElement('p');
+    el.className = 'online-panel__error';
+    onlinePanel.appendChild(el);
+  }
+  el.textContent = msg;
+  setTimeout(() => el.remove(), 5000);
+}
+
+function setOnlineLobbyState(state) {
+  onlineMenu.hidden = state !== 'menu';
+  onlineWaiting.hidden = state !== 'waiting';
+}
+
+function updateOnlineBar() {
+  if (!onlineConnected || !myPlayer) return;
+  const rival = myPlayer === 'X' ? 'O' : 'X';
+  onlineYouEl.textContent = `Tú: ${myPlayer}`;
+  onlineRivalEl.textContent = `Rival: ${rival}`;
+  connectionDot.classList.toggle('online-bar__dot--off', !onlineConnected);
+}
+
+function sendOnline(data) {
+  if (conn?.open) conn.send(data);
+}
+
+function setupConnection(connection) {
+  conn = connection;
+  conn.on('open', () => {
+    if (joinTimeoutId) clearTimeout(joinTimeoutId);
+    onlineConnected = true;
+    setOnlineLobbyState('hidden');
+    onlinePanel.hidden = true;
+    onlineBar.hidden = false;
+    gameArea.classList.remove('game-area--hidden');
+    updateOnlineBar();
+    clearChat();
+    const welcome = chatMessages.querySelector('.chat__welcome');
+    if (welcome) welcome.textContent = '¡Conectados! Escribid en el chat.';
+    if (onlineRole === 'host') {
+      newRound({ remote: true });
+      sendOnline({ type: 'sync', board, currentPlayer, gameOver });
+    }
+    updateStatus();
+    sfx.click();
+  });
+
+  conn.on('data', (data) => handleOnlineMessage(data));
+
+  conn.on('close', () => {
+    onlineConnected = false;
+    connectionDot.classList.add('online-bar__dot--off');
+    statusTextEl.textContent = 'Rival desconectado';
+    boardEl.querySelectorAll('.cell').forEach(c => c.disabled = true);
+  });
+}
+
+function handleOnlineMessage(data) {
+  switch (data.type) {
+    case 'move':
+      makeMove(data.index, { remote: true });
+      break;
+    case 'restart':
+      newRound({ remote: true });
+      break;
+    case 'sync':
+      applySync(data);
+      break;
+    case 'chat':
+      addChatMessage(data.sender, data.text, data.censored);
+      break;
+  }
+}
+
+function applySync({ board: b, currentPlayer: cp, gameOver: over }) {
+  board = [...b];
+  currentPlayer = cp;
+  gameOver = over;
+  hideWinLine();
+  boardEl.querySelectorAll('.cell').forEach((cell, i) => {
+    cell.innerHTML = '';
+    cell.className = 'cell';
+    cell.disabled = over || Boolean(board[i]);
+    if (board[i]) {
+      cell.classList.add('taken');
+      const piece = document.createElement('span');
+      piece.className = `piece piece--${board[i].toLowerCase()}`;
+      piece.textContent = board[i];
+      cell.appendChild(piece);
+    }
+  });
+  updateStatus();
+}
+
+function createRoom() {
+  disconnectOnline();
+  mode = 'online';
+  modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === 'online'));
+  updateUI();
+  tryCreateRoom();
+}
+
+function tryCreateRoom(attempts = 0) {
+  roomCode = genRoomCode();
+  onlineRole = 'host';
+  myPlayer = 'X';
+  roomCodeDisplay.textContent = roomCode;
+  onlineStatusEl.textContent = 'Esperando rival…';
+  setOnlineLobbyState('waiting');
+  history.replaceState(null, '', roomLink(roomCode));
+
+  peer = new Peer(peerId(roomCode));
+
+  peer.on('open', () => {
+    onlineStatusEl.textContent = 'Sala creada — comparte el enlace';
+  });
+
+  peer.on('connection', (connection) => {
+    if (conn?.open) {
+      connection.close();
+      return;
+    }
+    setupConnection(connection);
+    onlineStatusEl.textContent = '¡Rival conectado!';
+  });
+
+  peer.on('error', (err) => {
+    if (err.type === 'unavailable-id' && attempts < 5) {
+      peer.destroy();
+      tryCreateRoom(attempts + 1);
+      return;
+    }
+    showOnlineError('No se pudo crear la sala. Inténtalo de nuevo.');
+    setOnlineLobbyState('menu');
+  });
+}
+
+function joinRoom(code) {
+  const clean = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (clean.length !== 6) {
+    showOnlineError('El código debe tener 6 caracteres.');
+    return;
+  }
+
+  disconnectOnline();
+  roomCode = clean;
+  onlineRole = 'guest';
+  myPlayer = 'O';
+  onlineStatusEl.textContent = 'Conectando…';
+  setOnlineLobbyState('waiting');
+  onlineMenu.hidden = true;
+  onlineWaiting.hidden = false;
+  roomCodeDisplay.textContent = roomCode;
+  history.replaceState(null, '', roomLink(roomCode));
+
+  peer = new Peer();
+
+  joinTimeoutId = setTimeout(() => {
+    if (!onlineConnected) {
+      showOnlineError('Sala no encontrada. ¿El rival ha creado la sala?');
+      leaveOnline();
+    }
+  }, 15000);
+
+  peer.on('open', () => {
+    const connection = peer.connect(peerId(roomCode), { reliable: true });
+    setupConnection(connection);
+  });
+
+  peer.on('error', () => {
+    if (joinTimeoutId) clearTimeout(joinTimeoutId);
+    showOnlineError('Error de conexión. Revisa tu internet.');
+    leaveOnline();
+  });
+}
+
+async function copyRoomLink() {
+  try {
+    await navigator.clipboard.writeText(roomLink(roomCode));
+    onlineStatusEl.textContent = '¡Enlace copiado!';
+    sfx.click();
+    setTimeout(() => {
+      if (!onlineConnected) onlineStatusEl.textContent = 'Esperando rival…';
+    }, 2000);
+  } catch {
+    showOnlineError('No se pudo copiar. Copia el código manualmente.');
+  }
+}
+
+function disconnectOnline() {
+  if (conn) {
+    conn.close();
+    conn = null;
+  }
+  if (peer) {
+    peer.destroy();
+    peer = null;
+  }
+  onlineConnected = false;
+  onlineRole = null;
+  myPlayer = null;
+  roomCode = '';
+
+  const url = new URL(location.href);
+  url.searchParams.delete('room');
+  history.replaceState(null, '', url.toString());
+}
+
+function leaveOnline() {
+  disconnectOnline();
+  setOnlineLobbyState('menu');
+  onlinePanel.hidden = false;
+  onlineBar.hidden = true;
+  gameArea.classList.remove('game-area--hidden');
+  roomCodeInput.value = '';
+  newRound({ remote: true });
+}
+
 /* ── Chat ── */
 function isChatEnabled() {
-  return !isCpuMode();
+  return isOnlineMode() || !isCpuMode();
 }
 
 function addChatMessage(sender, rawText, wasCensored) {
@@ -171,7 +440,11 @@ function addChatMessage(sender, rawText, wasCensored) {
 
   const author = document.createElement('span');
   author.className = 'chat__msg-author';
-  author.textContent = sender === 'X' ? 'Jugador X' : 'Jugador O';
+  if (isOnlineMode() && myPlayer) {
+    author.textContent = sender === myPlayer ? `Tú (${sender})` : `Rival (${sender})`;
+  } else {
+    author.textContent = sender === 'X' ? 'Jugador X' : 'Jugador O';
+  }
 
   const bubble = document.createElement('span');
   bubble.className = 'chat__msg-bubble';
@@ -198,9 +471,15 @@ function addChatMessage(sender, rawText, wasCensored) {
 function sendChatMessage(text) {
   const trimmed = text.trim();
   if (!trimmed || !isChatEnabled()) return;
+  if (isOnlineMode() && !onlineConnected) return;
 
+  const sender = isOnlineMode() ? myPlayer : chatSender;
   const { text: clean, censored } = censorMessage(trimmed);
-  addChatMessage(chatSender, clean, censored);
+  addChatMessage(sender, clean, censored);
+
+  if (isOnlineMode()) {
+    sendOnline({ type: 'chat', sender, text: clean, censored });
+  }
   sfx.click();
 }
 
@@ -286,6 +565,15 @@ function init() {
   bindEvents();
   updateUI();
   newRound();
+
+  const roomParam = new URLSearchParams(location.search).get('room');
+  if (roomParam) {
+    mode = 'online';
+    modeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === 'online'));
+    updateUI();
+    roomCodeInput.value = roomParam.toUpperCase();
+    joinRoom(roomParam);
+  }
 }
 
 function buildBoard() {
@@ -307,14 +595,34 @@ function bindEvents() {
   btnSound.addEventListener('click', () => sfx.toggle());
   btnNewTournament.addEventListener('click', () => { sfx.click(); startTournament(); });
 
+  btnCreateRoom.addEventListener('click', () => { sfx.click(); createRoom(); });
+  btnJoinRoom.addEventListener('click', () => {
+    sfx.click();
+    joinRoom(roomCodeInput.value);
+  });
+  btnCopyLink.addEventListener('click', () => copyRoomLink());
+  btnCancelRoom.addEventListener('click', () => { sfx.click(); leaveOnline(); });
+
+  roomCodeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      joinRoom(roomCodeInput.value);
+    }
+  });
+
   modeBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       sfx.click();
+      if (mode === 'online') leaveOnline();
       modeBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       mode = btn.dataset.mode;
       if (mode === 'tournament') startTournament();
-      else {
+      else if (mode === 'online') {
+        tournamentFinished = false;
+        tournamentOverlay.hidden = true;
+        updateUI();
+      } else {
         tournamentFinished = false;
         tournamentOverlay.hidden = true;
         updateUI();
@@ -385,14 +693,30 @@ function winsNeeded() {
 
 function updateUI() {
   const cpu = isCpuMode();
+  const online = isOnlineMode();
   cpuOptionsEl.hidden = !cpu;
   tournamentOptionsEl.hidden = mode !== 'tournament';
   tournamentBarEl.hidden = mode !== 'tournament';
-  if (cpu) clearChat();
-  chatPanel.hidden = cpu;
-  labelOEl.textContent = cpu ? 'CPU' : 'Jugador O';
+  onlinePanel.hidden = !online || onlineConnected;
+  onlineBar.hidden = !online || !onlineConnected;
+  gameArea.classList.toggle('game-area--hidden', online && !onlineConnected);
+
+  if (online) {
+    setOnlineLobbyState(onlineConnected ? 'hidden' : 'menu');
+    labelOEl.textContent = 'Jugador O';
+    chatPanel.hidden = false;
+    if (chatSenderGroup) chatSenderGroup.hidden = true;
+    if (myPlayer) chatSender = myPlayer;
+  } else {
+    if (cpu) clearChat();
+    chatPanel.hidden = cpu;
+    if (chatSenderGroup) chatSenderGroup.hidden = false;
+    labelOEl.textContent = cpu ? 'CPU' : 'Jugador O';
+  }
+
   tournamentFormatLabel.textContent = `Al mejor de ${tournamentFormat}`;
   updateTournamentDisplay();
+  updateOnlineBar();
 }
 
 function startTournament() {
@@ -483,11 +807,15 @@ function resetScores() {
   updateScoreDisplay();
 }
 
-function newRound() {
+function newRound({ remote = false } = {}) {
   if (mode === 'tournament' && tournamentFinished) return;
 
-  chatSender = 'X';
-  updateChatSenderUI();
+  if (!isOnlineMode()) {
+    chatSender = 'X';
+    updateChatSenderUI();
+  } else if (myPlayer) {
+    chatSender = myPlayer;
+  }
 
   board = Array(9).fill(null);
   currentPlayer = 'X';
@@ -502,11 +830,18 @@ function newRound() {
   });
 
   updateStatus();
+
+  if (isOnlineMode() && onlineConnected && !remote) {
+    sendOnline({ type: 'restart' });
+  }
 }
 
 function handleCellClick(index) {
   if (gameOver || board[index] || tournamentFinished) return;
   if (isCpuMode() && currentPlayer === 'O') return;
+  if (isOnlineMode()) {
+    if (!onlineConnected || currentPlayer !== myPlayer) return;
+  }
 
   makeMove(index);
 
@@ -529,7 +864,9 @@ function cpuTurn() {
   }, delay + Math.random() * 300);
 }
 
-function makeMove(index) {
+function makeMove(index, { remote = false } = {}) {
+  if (board[index]) return;
+
   board[index] = currentPlayer;
   const cell = boardEl.children[index];
   cell.classList.add('taken');
@@ -545,16 +882,26 @@ function makeMove(index) {
   const result = checkWinner();
   if (result) {
     endGame(result);
+    if (isOnlineMode() && onlineConnected && !remote) {
+      sendOnline({ type: 'move', index });
+    }
     return;
   }
 
   if (board.every(c => c !== null)) {
     endGame({ winner: null });
+    if (isOnlineMode() && onlineConnected && !remote) {
+      sendOnline({ type: 'move', index });
+    }
     return;
   }
 
   currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
   updateStatus();
+
+  if (isOnlineMode() && onlineConnected && !remote) {
+    sendOnline({ type: 'move', index });
+  }
 }
 
 function checkWinner() {
@@ -632,6 +979,16 @@ function updateStatus() {
   if (mode === 'tournament' && !tournamentFinished) {
     const needed = winsNeeded();
     statusTextEl.textContent = `— ronda (${tournamentScores.x} vs ${tournamentScores.o}, a ${needed})`;
+  } else if (isOnlineMode()) {
+    if (!onlineConnected) {
+      statusTextEl.textContent = '— conecta con un rival';
+    } else if (gameOver) {
+      statusTextEl.textContent = '— partida terminada';
+    } else if (currentPlayer === myPlayer) {
+      statusTextEl.textContent = '— tu turno';
+    } else {
+      statusTextEl.textContent = '— turno del rival';
+    }
   } else if (isCpuMode() && currentPlayer === 'O') {
     statusTextEl.textContent = '— turno CPU';
   } else {

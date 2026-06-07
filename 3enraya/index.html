@@ -27,16 +27,60 @@
     <section class="mode-panel">
       <button class="mode-btn active" data-mode="pvp" type="button">
         <span class="mode-btn__icon">👥</span>
-        2 Jugadores
+        Local
+      </button>
+      <button class="mode-btn" data-mode="online" type="button">
+        <span class="mode-btn__icon">🌐</span>
+        Online
       </button>
       <button class="mode-btn" data-mode="cpu" type="button">
         <span class="mode-btn__icon">🤖</span>
-        vs CPU
+        CPU
       </button>
       <button class="mode-btn" data-mode="tournament" type="button">
         <span class="mode-btn__icon">🏆</span>
         Torneo
       </button>
+    </section>
+
+    <section class="online-panel" id="online-panel" hidden>
+      <div class="online-panel__menu" id="online-menu">
+        <span class="options-panel__label">Jugar contra alguien en internet</span>
+        <button class="btn btn--primary online-panel__create" id="btn-create-room" type="button">
+          ➕ Crear sala
+        </button>
+        <div class="online-panel__join">
+          <input
+            class="chat__input"
+            id="room-code-input"
+            type="text"
+            placeholder="Código de sala"
+            maxlength="6"
+            autocomplete="off"
+            autocapitalize="characters"
+          />
+          <button class="btn btn--ghost" id="btn-join-room" type="button">Unirse</button>
+        </div>
+      </div>
+
+      <div class="online-panel__waiting" id="online-waiting" hidden>
+        <p class="online-panel__label">Código de sala</p>
+        <p class="online-panel__code" id="room-code-display">------</p>
+        <button class="btn btn--ghost online-panel__copy" id="btn-copy-link" type="button">
+          📋 Copiar enlace
+        </button>
+        <p class="online-panel__status" id="online-status">Esperando rival…</p>
+        <button class="btn btn--ghost online-panel__cancel" id="btn-cancel-room" type="button">
+          Cancelar
+        </button>
+      </div>
+    </section>
+
+    <section class="online-bar" id="online-bar" hidden>
+      <span class="online-bar__badge" id="online-role-badge">🌐 Online</span>
+      <span class="online-bar__you" id="online-you">Tú: X</span>
+      <span class="online-bar__dot" id="online-connection-dot" title="Conectado"></span>
+      <span class="online-bar__rival" id="online-rival">Rival: O</span>
     </section>
 
     <section class="options-panel" id="cpu-options" hidden>
@@ -93,7 +137,7 @@
       </div>
     </section>
 
-    <section class="game-area">
+    <section class="game-area" id="game-area">
       <div class="status" id="status" aria-live="polite">
         <span class="status__piece status__piece--x" id="status-piece">X</span>
         <span id="status-text">empieza la partida</span>
@@ -166,6 +210,7 @@
 
   <canvas id="particles" aria-hidden="true"></canvas>
 
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
