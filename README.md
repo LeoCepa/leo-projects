@@ -19,4 +19,5 @@ La web principal está en [`leocepa-com/`](leocepa-com/) — abre `index.html` e
 | `pedos-rey-javi` | Juego |
 | `tengo-hambre` | App web |
 | `zorro` | Proyecto |
+| `los objetos` | Los objetos cobran vida y quieren conquistar el mundo |
 | `leocepa-com` | Web personal LeoCepa.com |

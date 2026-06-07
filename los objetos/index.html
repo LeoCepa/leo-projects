@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Los Objetos — Las 5 Esferas de la Vida</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game" width="800" height="480"></canvas>
+    <div id="overlay">
+      <div id="menu" class="panel">
+        <h1>LOS OBJETOS</h1>
+        <p class="subtitle">Las 5 Esferas de la Vida</p>
+        <div class="story">
+          <p>Los objetos han cobrado vida. Quieren <strong>conquistar el mundo</strong>.</p>
+          <p>Solo un niño puede reunir las 5 Esferas de la Vida y devolverlos a la quietud.</p>
+        </div>
+        <div class="controls-info">
+          <p><kbd>←</kbd> <kbd>→</kbd> Correr · <kbd>Espacio</kbd> Saltar</p>
+          <p><kbd>E</kbd> Pulso de Quietud (aturde objetos)</p>
+          <p><kbd>Shift</kbd> Dash · ¡No dejes que te atrapen!</p>
+        </div>
+        <button id="btn-start">¡A salvar el mundo!</button>
+      </div>
+      <div id="level-complete" class="panel hidden">
+        <h2 id="level-title">¡Esfera conseguida!</h2>
+        <p id="level-message"></p>
+        <button id="btn-next">Siguiente zona</button>
+      </div>
+      <div id="game-over" class="panel hidden">
+        <h2>¡Te atraparon!</h2>
+        <p>Los objetos casi conquistan otro niño más…</p>
+        <button id="btn-retry">Intentar de nuevo</button>
+      </div>
+      <div id="victory" class="panel hidden">
+        <h2>¡MUNDO SALVADO!</h2>
+        <p>Las 5 esferas brillan. Los objetos vuelven a estar inanimados.</p>
+        <p class="heart">🌎 La conquista ha fallado 🌎</p>
+        <button id="btn-replay">Jugar otra vez</button>
+      </div>
+    </div>
+    <div id="hud">
+      <span id="hud-level">Zona 1</span>
+      <span id="hud-spheres">🔮 0/5</span>
+      <span id="hud-pulse">⚡ Pulso</span>
+      <span id="hud-lives">❤️❤️❤️</span>
+    </div>
+    <div id="touch-controls" aria-hidden="true">
+      <button type="button" class="touch-btn" data-action="left">◀</button>
+      <button type="button" class="touch-btn" data-action="right">▶</button>
+      <button type="button" class="touch-btn" data-action="jump">⤒</button>
+      <button type="button" class="touch-btn accent" data-action="pulse">⚡</button>
+      <button type="button" class="touch-btn accent" data-action="dash">💨</button>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

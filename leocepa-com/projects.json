@@ -85,6 +85,16 @@
     "status": "ready"
   },
   {
+    "id": "los objetos",
+    "title": "Los Objetos",
+    "emoji": "🔮",
+    "description": "Los objetos quieren conquistar el mundo. ¡Reúne las 5 Esferas de la Vida!",
+    "path": "los objetos/index.html",
+    "tags": ["aventura"],
+    "mobileFullscreen": true,
+    "status": "ready"
+  },
+  {
     "id": "zorro",
     "title": "Zorro",
     "emoji": "🦊",
