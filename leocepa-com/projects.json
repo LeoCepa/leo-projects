@@ -48,15 +48,6 @@
     "status": "ready"
   },
   {
-    "id": "javi-rescate",
-    "title": "Javi: Rescate de Leo y Nara",
-    "emoji": "👨‍👧‍👦",
-    "description": "10 niveles, un papá y una misión épica.",
-    "path": "javi-rescate/index.html",
-    "tags": ["aventura"],
-    "status": "ready"
-  },
-  {
     "id": "otro-juego",
     "title": "Zorro — Supervivencia",
     "emoji": "🦊",
