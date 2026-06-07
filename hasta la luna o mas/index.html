@@ -17,10 +17,71 @@
         overscroll-behavior: none;
       }
       #game { width: 100%; height: 100%; touch-action: none; }
+
+      #touch-controls {
+        display: none;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10000;
+        padding: 10px 14px max(10px, env(safe-area-inset-bottom));
+        gap: 10px;
+        align-items: flex-end;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      #touch-controls.visible { display: flex; }
+      #touch-controls .move-group {
+        display: flex;
+        gap: 10px;
+        pointer-events: none;
+      }
+      #touch-controls button {
+        pointer-events: auto;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.2);
+        color: #fff;
+        font-size: 28px;
+        line-height: 1;
+        border-radius: 16px;
+        min-width: 72px;
+        min-height: 72px;
+        padding: 0;
+        font-family: "Segoe UI", sans-serif;
+        user-select: none;
+      }
+      #touch-controls button.pressed {
+        background: rgba(255, 255, 255, 0.42);
+        border-color: rgba(255, 255, 255, 0.75);
+      }
+      #touch-controls #tc-jump {
+        min-width: 84px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 30px;
+      }
+      #touch-controls #tc-jump small {
+        font-size: 10px;
+        letter-spacing: 0.04em;
+        margin-top: 2px;
+        opacity: 0.9;
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="touch-controls" aria-label="Controles táctiles">
+      <div class="move-group">
+        <button type="button" id="tc-left" aria-label="Izquierda">←</button>
+        <button type="button" id="tc-right" aria-label="Derecha">→</button>
+      </div>
+      <button type="button" id="tc-jump" aria-label="Saltar">↑<small>SALTAR</small></button>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js"></script>
     <script>
       const GAME_WIDTH = 480;
@@ -75,55 +136,92 @@
         return Math.floor(meters) + " m";
       }
 
-      function isTouchDevice() {
-        return "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      const touchControls = {
+        left: false,
+        right: false,
+        jumpPressed: false,
+        enabled: false,
+        resetJump() { this.jumpPressed = false; },
+        resetAll() { this.left = false; this.right = false; this.jumpPressed = false; },
+      };
+
+      function shouldUseTouchControls() {
+        try {
+          if (window.matchMedia("(pointer: coarse)").matches) return true;
+          if (window.matchMedia("(hover: none)").matches) return true;
+        } catch (e) {}
+        if (navigator.maxTouchPoints > 0) return true;
+        if ("ontouchstart" in window) return true;
+        if (window.innerWidth <= 900) return true;
+        return false;
       }
 
-      class TouchControls {
-        constructor(scene) {
-          this.left = false;
-          this.right = false;
-          this.jumpPressed = false;
-          this.enabled = isTouchDevice();
-          this.container = scene.add.container(0, 0).setScrollFactor(0).setDepth(50);
+      function pointerIdFromEvent(e) {
+        if (e.pointerId !== undefined) return e.pointerId;
+        if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0].identifier;
+        return 0;
+      }
 
-          if (!this.enabled) {
-            this.container.setVisible(false);
-            return;
+      function bindHoldButton(btn, onDown, onUp) {
+        const active = new Set();
+
+        const press = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          const id = pointerIdFromEvent(e);
+          if (active.has(id)) return;
+          active.add(id);
+          btn.classList.add("pressed");
+          onDown();
+          if (btn.setPointerCapture && e.pointerId !== undefined) {
+            try { btn.setPointerCapture(e.pointerId); } catch (err) {}
           }
+        };
 
-          const y = GAME_HEIGHT - 62;
-          const labelStyle = { fontFamily: "Segoe UI, sans-serif", fontSize: "28px", color: "#ffffff" };
+        const release = (e) => {
+          const id = pointerIdFromEvent(e);
+          if (!active.has(id)) return;
+          active.delete(id);
+          if (active.size === 0) {
+            btn.classList.remove("pressed");
+            onUp();
+          }
+        };
 
-          const mkBtn = (x, w, h, label, onDown, onUp) => {
-            const bg = scene.add.rectangle(x, y, w, h, 0xffffff, 0.18);
-            bg.setStrokeStyle(2, 0xffffff, 0.35);
-            const txt = scene.add.text(x, y, label, labelStyle).setOrigin(0.5);
-            const hit = scene.add.rectangle(x, y, w + 12, h + 12, 0x000000, 0.001);
-            hit.setInteractive({ useHandCursor: false });
-            const press = () => { bg.setFillStyle(0xffffff, 0.35); onDown(); };
-            const release = () => { bg.setFillStyle(0xffffff, 0.18); onUp(); };
-            hit.on("pointerdown", (p) => { p.event.stopPropagation(); press(); });
-            hit.on("pointerup", release);
-            hit.on("pointerout", release);
-            hit.on("pointerupoutside", release);
-            this.container.add([bg, txt, hit]);
-          };
-
-          mkBtn(72, 72, 72, "←", () => { this.left = true; }, () => { this.left = false; });
-          mkBtn(168, 72, 72, "→", () => { this.right = true; }, () => { this.right = false; });
-          mkBtn(392, 88, 72, "↑", () => { this.jumpPressed = true; }, () => {});
-
-          const jumpLabel = scene.add.text(392, y + 34, "SALTAR", {
-            fontFamily: "Segoe UI, sans-serif", fontSize: "11px", color: "#ddeeff",
-          }).setOrigin(0.5);
-          this.container.add(jumpLabel);
-        }
-
-        resetJump() {
-          this.jumpPressed = false;
-        }
+        btn.addEventListener("pointerdown", press);
+        btn.addEventListener("pointerup", release);
+        btn.addEventListener("pointercancel", release);
+        btn.addEventListener("lostpointercapture", release);
+        btn.addEventListener("contextmenu", (e) => e.preventDefault());
       }
+
+      function initDomTouchControls() {
+        touchControls.enabled = shouldUseTouchControls();
+        const panel = document.getElementById("touch-controls");
+        if (!touchControls.enabled) return;
+
+        panel.classList.add("visible");
+        bindHoldButton(
+          document.getElementById("tc-left"),
+          () => { touchControls.left = true; },
+          () => { touchControls.left = false; }
+        );
+        bindHoldButton(
+          document.getElementById("tc-right"),
+          () => { touchControls.right = true; },
+          () => { touchControls.right = false; }
+        );
+        bindHoldButton(
+          document.getElementById("tc-jump"),
+          () => { touchControls.jumpPressed = true; },
+          () => {}
+        );
+
+        panel.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+        panel.addEventListener("touchend", (e) => e.stopPropagation(), { passive: true });
+      }
+
+      initDomTouchControls();
 
       class Player {
         constructor(scene, x, y) {
@@ -344,7 +442,6 @@
 
           this.cursors = this.input.keyboard.createCursorKeys();
           this.keys = this.input.keyboard.addKeys("W,A,S,D,SPACE");
-          this.touchControls = new TouchControls(this);
 
           const textStyle = { fontFamily: "Segoe UI, sans-serif", color: "#ffffff" };
           this.hudAltitude = this.add.text(16, 16, "", { ...textStyle, fontSize: "28px" })
@@ -363,17 +460,19 @@
           });
           this.input.on("pointerdown", (pointer) => {
             if (this.state !== "menu" && this.state !== "gameover") return;
-            if (pointer.y > GAME_HEIGHT - 130 && this.touchControls.enabled) return;
+            const target = pointer.event && pointer.event.target;
+            if (target && target.closest && target.closest("#touch-controls")) return;
             this.startGame();
           });
 
-          document.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+          const gameEl = document.getElementById("game");
+          gameEl.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
 
           this.showMenu();
         }
 
         controlHints() {
-          if (this.touchControls.enabled) {
+          if (touchControls.enabled) {
             return "Botones abajo: ← → mover  ·  ↑ saltar\n\nToca la pantalla para empezar";
           }
           return "↑ o Espacio para saltar  ·  ← → para moverte\n\nPulsa Espacio o toca para empezar";
@@ -387,10 +486,11 @@
         }
 
         resetTouchState() {
-          if (!this.touchControls) return;
-          this.touchControls.left = false;
-          this.touchControls.right = false;
-          this.touchControls.resetJump();
+          touchControls.resetAll();
+          ["tc-left", "tc-right", "tc-jump"].forEach((id) => {
+            const btn = document.getElementById(id);
+            if (btn) btn.classList.remove("pressed");
+          });
         }
 
         startGame() {
@@ -460,8 +560,8 @@
             return;
           }
 
-          this.player.update(this.cursors, this.keys, this.touchControls);
-          this.touchControls.resetJump();
+          this.player.update(this.cursors, this.keys, touchControls);
+          touchControls.resetJump();
           const rawAltitude = Math.max(0, (GAME_HEIGHT - 120 - this.player.y) * ALTITUDE.metersPerPixel);
           this.altitudeMeters = Math.max(this.altitudeMeters, rawAltitude);
 
