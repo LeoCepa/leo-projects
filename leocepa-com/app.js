@@ -20,6 +20,16 @@ function playUrl(project) {
   return `${playPage}?game=${encodeURIComponent(project.id)}`;
 }
 
+function isMobileDevice() {
+  try {
+    if (window.matchMedia("(pointer: coarse)").matches) return true;
+    if (window.matchMedia("(hover: none)").matches) return true;
+  } catch {
+    /* ignore */
+  }
+  return navigator.maxTouchPoints > 0 || window.innerWidth <= 900;
+}
+
 function createStars() {
   const wrap = document.getElementById("stars");
   if (!wrap) return;
@@ -142,6 +152,13 @@ async function initPlayer() {
   const project = projects.find((p) => p.id === gameId);
   if (!project || project.status === "soon") {
     if (titleEl) titleEl.textContent = "Juego no encontrado";
+    return;
+  }
+
+  if (isMobileDevice() && project.mobileFullscreen) {
+    const url = new URL(gameUrl(project), location.href);
+    url.searchParams.set("from", "leocepa");
+    location.replace(url.toString());
     return;
   }
 

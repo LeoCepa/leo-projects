@@ -10,26 +10,51 @@
       * { margin: 0; padding: 0; box-sizing: border-box; }
       html, body {
         width: 100%; height: 100%; overflow: hidden; background: #0a0a1a;
-        touch-action: none;
+        touch-action: manipulation;
         -webkit-touch-callout: none;
         -webkit-user-select: none;
         user-select: none;
         overscroll-behavior: none;
       }
-      #game { width: 100%; height: 100%; touch-action: none; }
+      body.touch-mode {
+        display: flex;
+        flex-direction: column;
+      }
+      #game {
+        width: 100%;
+        flex: 1;
+        min-height: 0;
+        touch-action: none;
+      }
+      body:not(.touch-mode) #game { height: 100%; }
+
+      #back-link {
+        display: none;
+        position: fixed;
+        top: max(8px, env(safe-area-inset-top));
+        left: 8px;
+        z-index: 10001;
+        padding: 8px 14px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.55);
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        color: #fff;
+        text-decoration: none;
+        font-family: "Segoe UI", sans-serif;
+        font-size: 14px;
+        touch-action: manipulation;
+      }
+      body.standalone #back-link { display: block; }
 
       #touch-controls {
         display: none;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 10000;
+        flex-shrink: 0;
         padding: 10px 14px max(10px, env(safe-area-inset-bottom));
         gap: 10px;
         align-items: flex-end;
         justify-content: space-between;
-        pointer-events: none;
+        background: rgba(0, 0, 0, 0.35);
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
       }
       #touch-controls.visible { display: flex; }
       #touch-controls .move-group {
@@ -74,6 +99,7 @@
     </style>
   </head>
   <body>
+    <a id="back-link" href="../index.html">← Volver</a>
     <div id="game"></div>
     <div id="touch-controls" aria-label="Controles táctiles">
       <div class="move-group">
@@ -145,7 +171,10 @@
         resetAll() { this.left = false; this.right = false; this.jumpPressed = false; },
       };
 
+      const IN_IFRAME = window.self !== window.top;
+
       function shouldUseTouchControls() {
+        if (IN_IFRAME) return false;
         try {
           if (window.matchMedia("(pointer: coarse)").matches) return true;
           if (window.matchMedia("(hover: none)").matches) return true;
@@ -156,10 +185,12 @@
         return false;
       }
 
-      function pointerIdFromEvent(e) {
-        if (e.pointerId !== undefined) return e.pointerId;
-        if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0].identifier;
-        return 0;
+      function touchIdsFromEvent(e) {
+        if (e.changedTouches && e.changedTouches.length) {
+          return Array.from(e.changedTouches, (t) => t.identifier);
+        }
+        if (e.pointerId !== undefined) return [e.pointerId];
+        return ["mouse"];
       }
 
       function bindHoldButton(btn, onDown, onUp) {
@@ -168,39 +199,56 @@
         const press = (e) => {
           e.preventDefault();
           e.stopPropagation();
-          const id = pointerIdFromEvent(e);
+          const id = touchIdsFromEvent(e)[0];
           if (active.has(id)) return;
           active.add(id);
           btn.classList.add("pressed");
           onDown();
-          if (btn.setPointerCapture && e.pointerId !== undefined) {
-            try { btn.setPointerCapture(e.pointerId); } catch (err) {}
-          }
         };
 
         const release = (e) => {
-          const id = pointerIdFromEvent(e);
-          if (!active.has(id)) return;
-          active.delete(id);
-          if (active.size === 0) {
+          let any = false;
+          for (const id of touchIdsFromEvent(e)) {
+            if (active.delete(id)) any = true;
+          }
+          if (any && active.size === 0) {
             btn.classList.remove("pressed");
             onUp();
           }
         };
 
-        btn.addEventListener("pointerdown", press);
-        btn.addEventListener("pointerup", release);
-        btn.addEventListener("pointercancel", release);
-        btn.addEventListener("lostpointercapture", release);
+        btn.addEventListener("touchstart", press, { passive: false });
+        btn.addEventListener("touchend", release, { passive: false });
+        btn.addEventListener("touchcancel", release, { passive: false });
+        btn.addEventListener("mousedown", press);
+        btn.addEventListener("mouseup", release);
         btn.addEventListener("contextmenu", (e) => e.preventDefault());
       }
 
+      function bindTapButton(btn, onTap) {
+        const tap = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          btn.classList.add("pressed");
+          onTap();
+          setTimeout(() => btn.classList.remove("pressed"), 120);
+        };
+        btn.addEventListener("touchstart", tap, { passive: false });
+        btn.addEventListener("mousedown", tap);
+      }
+
       function initDomTouchControls() {
+        if (new URLSearchParams(location.search).get("from") === "leocepa") {
+          document.body.classList.add("standalone");
+        }
+
         touchControls.enabled = shouldUseTouchControls();
         const panel = document.getElementById("touch-controls");
         if (!touchControls.enabled) return;
 
+        document.body.classList.add("touch-mode");
         panel.classList.add("visible");
+
         bindHoldButton(
           document.getElementById("tc-left"),
           () => { touchControls.left = true; },
@@ -211,15 +259,30 @@
           () => { touchControls.right = true; },
           () => { touchControls.right = false; }
         );
-        bindHoldButton(
+        bindTapButton(
           document.getElementById("tc-jump"),
-          () => { touchControls.jumpPressed = true; },
-          () => {}
+          () => { touchControls.jumpPressed = true; }
         );
 
-        panel.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
-        panel.addEventListener("touchend", (e) => e.stopPropagation(), { passive: true });
+        const releaseAll = () => {
+          touchControls.resetAll();
+          ["tc-left", "tc-right", "tc-jump"].forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove("pressed");
+          });
+        };
+        window.addEventListener("blur", releaseAll);
+        document.addEventListener("visibilitychange", () => {
+          if (document.hidden) releaseAll();
+        });
       }
+
+      window.addEventListener("message", (e) => {
+        if (!e.data || e.data.type !== "leocepa-input") return;
+        touchControls.left = Boolean(e.data.left);
+        touchControls.right = Boolean(e.data.right);
+        if (e.data.jump) touchControls.jumpPressed = true;
+      });
 
       initDomTouchControls();
 
@@ -596,7 +659,7 @@
         parent: "game",
         backgroundColor: "#0a0a1a",
         physics: { default: "arcade", arcade: { gravity: { x: 0, y: 0 }, debug: false } },
-        input: { activePointers: 3 },
+        input: { activePointers: 10 },
         scale: {
           mode: Phaser.Scale.FIT,
           autoCenter: Phaser.Scale.CENTER_BOTH,

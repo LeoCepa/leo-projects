@@ -6,6 +6,7 @@
     "description": "Salta de plataforma en plataforma hasta la luna.",
     "path": "hasta la luna o mas/index.html",
     "tags": ["aventura"],
+    "mobileFullscreen": true,
     "status": "ready"
   },
   {

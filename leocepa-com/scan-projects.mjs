@@ -54,6 +54,7 @@ async function discover() {
       path: `${id}/${entry}`.replace(/\/index\.html\/index\.html$/, "/index.html"),
       tags: info.tags ?? ["aventura"],
       ...(info.saga ? { saga: info.saga } : {}),
+      ...(info.mobileFullscreen ? { mobileFullscreen: true } : {}),
       status: info.status ?? (ready ? "ready" : "soon"),
     };
   });
