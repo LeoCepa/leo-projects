@@ -218,11 +218,9 @@ const LEVELS = [
     width: 2000,
     spawn: [48, GROUND_Y - 28],
     message: 'El Orbe Maldito lidera la conquista mundial. ¡Esta es la batalla final!',
+    noPits: true,
     platforms: [
-      plat(0, GROUND_Y, 600, 80),
-      plat(680, GROUND_Y, 400, 80),
-      plat(1140, GROUND_Y, 400, 80),
-      plat(1600, GROUND_Y, 400, 80),
+      plat(0, GROUND_Y, 2000, 80, 'floor'),
       plat(320, 336, 96, 28),
       plat(520, 304, 80, 28),
       plat(800, 336, 128, 28),
@@ -276,22 +274,56 @@ function spawnParticles(x, y, color, n = 8) {
   }
 }
 
+function pulseHitsObject(o) {
+  const hx = hero.x + hero.w / 2;
+  const hy = hero.y + hero.h / 2;
+  const ox = o.x + o.w / 2;
+  const oy = o.y + o.h / 2;
+  if (o.kind === 'boss') {
+    return rectsOverlap(hero, { x: o.x - 60, y: o.y - 40, w: o.w + 120, h: o.h + 80 })
+      || Math.hypot(ox - hx, oy - hy) < PULSE_RADIUS + 80;
+  }
+  return Math.hypot(ox - hx, oy - hy) < PULSE_RADIUS;
+}
+
+function collectSphere() {
+  if (!levelData || levelData.sphere.got) return;
+  const boss = levelData.objects.find((o) => o.kind === 'boss' && o.alive);
+  if (boss && boss.phase < BOSS_PULSES) return;
+
+  levelData.sphere.got = true;
+  spheres++;
+  spawnParticles(levelData.sphere.x, levelData.sphere.y, '#c084fc', 24);
+  if (currentLevel >= LEVELS.length - 1) {
+    state = STATE.VICTORY;
+    showPanel('victory');
+  } else {
+    state = STATE.LEVEL_COMPLETE;
+    document.getElementById('level-title').textContent = `¡Esfera ${spheres}/5!`;
+    document.getElementById('level-message').textContent = LEVELS[currentLevel].message;
+    showPanel('level-complete');
+  }
+}
+
 function firePulse() {
   if (hero.pulseCd > 0) return;
   hero.pulseCd = PULSE_COOLDOWN;
   pulseWaves.push({ x: hero.x + hero.w / 2, y: hero.y + hero.h / 2, r: 0, life: 28 });
   levelData.objects.forEach((o) => {
     if (!o.alive) return;
-    const ox = o.x + o.w / 2;
-    const oy = o.y + o.h / 2;
-    const hx = hero.x + hero.w / 2;
-    const hy = hero.y + hero.h / 2;
-    const dist = Math.hypot(ox - hx, oy - hy);
-    if (dist < PULSE_RADIUS) {
-      o.stun = PULSE_STUN;
-      if (o.kind === 'boss') {
-        o.phase += 1;
-        spawnParticles(ox, oy, '#6ee7ff', 12);
+    if (!pulseHitsObject(o)) return;
+
+    o.stun = PULSE_STUN;
+    if (o.kind === 'boss') {
+      o.phase += 1;
+      spawnParticles(o.x + o.w / 2, o.y + o.h / 2, '#6ee7ff', 16);
+      if (o.phase >= BOSS_PULSES) {
+        o.stun = 9999;
+        levelData.sphere.x = o.x + o.w / 2;
+        levelData.sphere.y = GROUND_Y - 36;
+        if (currentLevel >= LEVELS.length - 1) {
+          collectSphere();
+        }
       }
     }
   });
@@ -379,19 +411,8 @@ function updateHero() {
   const boss = levelData.objects.find((o) => o.kind === 'boss' && o.alive);
   const sphereReady = !boss || boss.phase >= BOSS_PULSES;
 
-  if (sphereReady && !levelData.sphere.got && rectsOverlap(hero, { x: levelData.sphere.x - 12, y: levelData.sphere.y - 12, w: 24, h: 24 })) {
-    levelData.sphere.got = true;
-    spheres++;
-    spawnParticles(levelData.sphere.x, levelData.sphere.y, '#c084fc', 24);
-    if (currentLevel >= LEVELS.length - 1) {
-      state = STATE.VICTORY;
-      showPanel('victory');
-    } else {
-      state = STATE.LEVEL_COMPLETE;
-      document.getElementById('level-title').textContent = `¡Esfera ${spheres}/5!`;
-      document.getElementById('level-message').textContent = LEVELS[currentLevel].message;
-      showPanel('level-complete');
-    }
+  if (sphereReady && !levelData.sphere.got && rectsOverlap(hero, { x: levelData.sphere.x - 16, y: levelData.sphere.y - 16, w: 32, h: 32 })) {
+    collectSphere();
   }
 }
 
@@ -411,6 +432,12 @@ function hurtHero() {
 function updateObjects() {
   levelData.objects.forEach((o) => {
     if (!o.alive) return;
+
+    if (o.kind === 'boss' && o.phase >= BOSS_PULSES) {
+      o.stun = 9999;
+      return;
+    }
+
     if (o.stun > 0) { o.stun--; return; }
 
     const hx = hero.x + hero.w / 2;
@@ -436,7 +463,6 @@ function updateObjects() {
           life: 120, r: 4,
         });
       }
-      if (o.phase >= BOSS_PULSES) o.stun = 9999;
       return;
     }
 
@@ -595,7 +621,8 @@ function drawSphere() {
     ctx.font = '10px "Press Start 2P"';
     ctx.fillStyle = '#ff6b9d';
     ctx.textAlign = 'center';
-    ctx.fillText(`Pulsa E x${BOSS_PULSES - boss.phase}`, sx, s.y - 24);
+    const left = Math.max(0, BOSS_PULSES - boss.phase);
+    ctx.fillText(left > 0 ? `¡Acércate y pulsa E! (${left})` : '', sx, s.y - 24);
   }
   ctx.beginPath();
   ctx.arc(sx, s.y + bob, glow, 0, Math.PI * 2);
