@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Creaventure — Crea tu mundo</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <header class="top-bar">
+      <div class="brand">
+        <span class="logo">🌍</span>
+        <div>
+          <h1>Creaventure</h1>
+          <p>¡Crea tu mundo como quieras!</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <div class="time-widget hidden" id="time-widget" title="Ciclo día / noche">
+          <span id="time-icon">☀️</span>
+          <span id="time-label">Mediodía</span>
+          <button type="button" class="icon-btn" id="btn-time-toggle" title="Pausar ciclo">⏸️</button>
+        </div>
+        <div class="mode-tabs">
+          <button type="button" class="mode-btn active" data-mode="build">🛠️ Construir</button>
+          <button type="button" class="mode-btn" data-mode="explore">🚶 Explorar</button>
+        </div>
+        <button type="button" class="btn small share-btn hidden" id="btn-share">📤 Compartir</button>
+      </div>
+    </header>
+
+    <div id="welcome" class="welcome">
+      <div class="welcome-card">
+        <div class="ira">✨</div>
+        <h2>¡Hola! Soy Ira</h2>
+        <p>Te ayudo a <strong>crear tu mundo como quieras</strong>. Terreno, objetos, animales, día y noche… ¡y comparte tu mundo con un código!</p>
+        <button type="button" id="btn-start" class="btn primary">¡Empezar a crear!</button>
+      </div>
+    </div>
+
+    <main class="game-area hidden">
+      <aside class="toolbar" id="toolbar">
+        <p class="toolbar-title">Terreno</p>
+        <div class="palette" id="terrain-palette"></div>
+        <p class="toolbar-title">Objetos</p>
+        <div class="palette" id="object-palette"></div>
+        <p class="toolbar-title">Animales</p>
+        <div class="palette" id="animal-palette"></div>
+        <p class="toolbar-title">Herramientas</p>
+        <div class="palette tools" id="tool-palette"></div>
+        <div class="toolbar-actions">
+          <button type="button" class="btn small" id="btn-random">🎲 Aleatorio</button>
+          <button type="button" class="btn small" id="btn-clear">🗑️ Limpiar</button>
+          <button type="button" class="btn small" id="btn-save">💾 Guardar</button>
+        </div>
+      </aside>
+
+      <div class="canvas-wrap">
+        <canvas id="world" width="960" height="600"></canvas>
+        <div id="explore-hint" class="hint hidden">
+          <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> para moverte
+        </div>
+        <div id="touch-pad" class="touch-pad hidden" aria-hidden="true">
+          <button type="button" class="touch-btn" data-dir="up">▲</button>
+          <div class="touch-row">
+            <button type="button" class="touch-btn" data-dir="left">◀</button>
+            <button type="button" class="touch-btn" data-dir="down">▼</button>
+            <button type="button" class="touch-btn" data-dir="right">▶</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="status-bar hidden" id="status-bar">
+      <span id="status-text">Pinta terreno con el ratón o el dedo</span>
+      <span id="tile-info"></span>
+    </footer>
+
+    <div id="share-modal" class="modal hidden" role="dialog" aria-labelledby="share-title">
+      <div class="modal-card">
+        <h2 id="share-title">📤 Compartir mundo</h2>
+        <p class="modal-text">Copia el código y envíaselo a un amigo. ¡Así puede jugar en tu mundo!</p>
+        <label class="field-label" for="share-code">Código de tu mundo</label>
+        <textarea id="share-code" rows="4" readonly placeholder="Pulsa «Generar código»"></textarea>
+        <div class="modal-actions">
+          <button type="button" class="btn small" id="btn-export">✨ Generar código</button>
+          <button type="button" class="btn small" id="btn-copy">📋 Copiar</button>
+        </div>
+        <label class="field-label" for="import-code">¿Tienes un código? Pégalo aquí</label>
+        <textarea id="import-code" rows="3" placeholder="Pega el código CV1:…"></textarea>
+        <div class="modal-actions">
+          <button type="button" class="btn primary" id="btn-import">📥 Cargar mundo</button>
+          <button type="button" class="btn small" id="btn-close-share">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

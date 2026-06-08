@@ -20,4 +20,5 @@ La web principal está en [`leocepa-com/`](leocepa-com/) — abre `index.html` e
 | `tengo-hambre` | App web |
 | `zorro` | Proyecto |
 | `los objetos` | Los objetos cobran vida y quieren conquistar el mundo |
+| `creaventure` | Crea tu mundo como quieras — sandbox de construcción |
 | `leocepa-com` | Web personal LeoCepa.com |

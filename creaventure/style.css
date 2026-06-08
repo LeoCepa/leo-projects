@@ -1,0 +1,477 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0f172a;
+  --panel: #1e293b;
+  --accent: #38bdf8;
+  --accent-2: #a78bfa;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --success: #4ade80;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: "Fredoka", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #1e3a5f 0%, var(--bg) 55%);
+  color: var(--text);
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(15, 23, 42, 0.92);
+  border-bottom: 2px solid rgba(56, 189, 248, 0.25);
+  flex-shrink: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo {
+  font-size: 2rem;
+}
+
+.brand h1 {
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.brand p {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.mode-tabs {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.time-widget {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--panel);
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+#time-icon {
+  font-size: 1rem;
+}
+
+#time-label {
+  color: var(--muted);
+  min-width: 4.5rem;
+}
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.1rem 0.25rem;
+  border-radius: 6px;
+}
+
+.icon-btn:hover {
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.share-btn {
+  width: auto !important;
+  white-space: nowrap;
+}
+
+.mode-btn {
+  border: 2px solid transparent;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.mode-btn:hover {
+  transform: translateY(-1px);
+}
+
+.mode-btn.active {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.18);
+}
+
+.welcome {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.welcome-card {
+  max-width: 420px;
+  text-align: center;
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.98));
+  border: 2px solid rgba(167, 139, 250, 0.35);
+  border-radius: 24px;
+  padding: 2rem 1.75rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.ira {
+  font-size: 3.5rem;
+  margin-bottom: 0.5rem;
+  animation: float 2.5s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.welcome-card h2 {
+  font-size: 1.6rem;
+  margin-bottom: 0.75rem;
+  color: var(--accent);
+}
+
+.welcome-card p {
+  line-height: 1.55;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+}
+
+.welcome-card strong {
+  color: var(--success);
+}
+
+.btn {
+  border: none;
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #0f172a;
+  padding: 0.85rem 1.75rem;
+  font-size: 1.05rem;
+  box-shadow: 0 8px 24px rgba(56, 189, 248, 0.35);
+}
+
+.btn.primary:hover {
+  transform: scale(1.04);
+}
+
+.btn.small {
+  background: var(--panel);
+  color: var(--text);
+  padding: 0.45rem 0.65rem;
+  font-size: 0.72rem;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  width: 100%;
+}
+
+.btn.small:hover {
+  border-color: var(--accent);
+}
+
+.game-area {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.toolbar {
+  width: 156px;
+  flex-shrink: 0;
+  background: rgba(30, 41, 59, 0.95);
+  border-right: 2px solid rgba(56, 189, 248, 0.15);
+  padding: 0.65rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.toolbar-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+}
+
+.palette.tools {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.palette-btn {
+  aspect-ratio: 1;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 1.1rem;
+  background: rgba(15, 23, 42, 0.6);
+  transition: transform 0.1s, border-color 0.1s;
+}
+
+.palette-btn:hover {
+  transform: scale(1.06);
+}
+
+.palette-btn.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+.toolbar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.canvas-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #020617;
+  overflow: hidden;
+  touch-action: none;
+}
+
+#world {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  border: 3px solid rgba(56, 189, 248, 0.2);
+  border-radius: 8px;
+  cursor: crosshair;
+}
+
+.explore-mode #world {
+  cursor: default;
+}
+
+.hint {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.88);
+  padding: 0.45rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.hint kbd {
+  background: var(--panel);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  margin: 0 0.1rem;
+  font-family: inherit;
+}
+
+.touch-pad {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: grid;
+  gap: 0.25rem;
+  opacity: 0.85;
+}
+
+.touch-row {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.touch-btn {
+  width: 52px;
+  height: 52px;
+  border: none;
+  border-radius: 14px;
+  background: rgba(30, 41, 59, 0.92);
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.touch-btn:active {
+  background: rgba(56, 189, 248, 0.35);
+}
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 1rem;
+  background: rgba(15, 23, 42, 0.95);
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  font-size: 0.78rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+#tile-info {
+  color: var(--accent);
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.modal-card {
+  width: min(440px, 100%);
+  background: linear-gradient(160deg, #1e293b, #0f172a);
+  border: 2px solid rgba(56, 189, 248, 0.3);
+  border-radius: 20px;
+  padding: 1.25rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+.modal-card h2 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+.modal-text {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+}
+
+.field-label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin: 0.75rem 0 0.35rem;
+}
+
+.modal-card textarea {
+  width: 100%;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.85);
+  color: var(--text);
+  font-family: ui-monospace, monospace;
+  font-size: 0.72rem;
+  padding: 0.65rem;
+  resize: vertical;
+}
+
+.modal-card textarea:focus {
+  outline: 2px solid rgba(56, 189, 248, 0.45);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.65rem;
+}
+
+.modal-actions .btn.small,
+.modal-actions .btn.primary {
+  width: auto;
+  flex: 1;
+  min-width: 120px;
+}
+
+@media (max-width: 800px) {
+  .top-bar {
+    flex-wrap: wrap;
+  }
+
+  .toolbar {
+    width: 112px;
+    padding: 0.45rem;
+  }
+
+  .palette-btn {
+    font-size: 0.95rem;
+  }
+
+  .brand h1 {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .toolbar-title,
+  .toolbar-actions .btn.small:nth-child(2) {
+    display: none;
+  }
+
+  .toolbar {
+    width: 88px;
+  }
+}

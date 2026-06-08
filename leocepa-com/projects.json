@@ -95,6 +95,16 @@
     "status": "ready"
   },
   {
+    "id": "creaventure",
+    "title": "Creaventure",
+    "emoji": "🌍",
+    "description": "¡Crea tu mundo como quieras! Animales, día/noche y códigos para compartir.",
+    "path": "creaventure/index.html",
+    "tags": ["aventura", "divertido"],
+    "mobileFullscreen": true,
+    "status": "ready"
+  },
+  {
     "id": "zorro",
     "title": "Zorro",
     "emoji": "🦊",
