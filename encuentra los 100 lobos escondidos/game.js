@@ -384,6 +384,7 @@ class LobosGame {
     this.scene.style.height = `${this.sceneH}px`;
 
     this.fitInitialView();
+    requestAnimationFrame(() => this.fitInitialView());
     this.renderMarkers();
     this.updateHud();
     this.bindEvents();

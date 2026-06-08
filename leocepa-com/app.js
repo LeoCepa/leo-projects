@@ -6,7 +6,7 @@ function repoBase() {
 
 function catalogUrl() {
   const base = SITE.self || ".";
-  return `${base}/projects.json?v=20260608`;
+  return `${base}/projects.json?v=20260608b`;
 }
 
 function gameUrl(project) {
@@ -155,7 +155,7 @@ async function initPlayer() {
     return;
   }
 
-  if (isMobileDevice() && project.mobileFullscreen) {
+  if (project.mobileFullscreen) {
     const url = new URL(gameUrl(project), location.href);
     url.searchParams.set("from", "leocepa");
     location.replace(url.toString());
