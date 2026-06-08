@@ -356,6 +356,16 @@ body {
   background: rgba(30, 41, 59, 0.95);
 }
 
+.btn-enter {
+  top: 1rem;
+  right: 6.5rem;
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.btn-enter:hover {
+  border-color: #38bdf8;
+}
+
 .touch-pad {
   position: absolute;
   right: 0.75rem;

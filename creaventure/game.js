@@ -111,6 +111,8 @@ controls.minDistance = 8;
 controls.maxDistance = 55;
 controls.target.set(0, 0, 0);
 
+let hoverCell = null;
+
 const hemi = new THREE.HemisphereLight(0xb1e1ff, 0x3d5a34, 0.45);
 scene.add(hemi);
 
@@ -463,6 +465,8 @@ function rebuildInteriorCell(ix, iy) {
   interiorFloorGroup.add(group);
   if (!interiorCellMeshes[iy]) interiorCellMeshes[iy] = [];
   interiorCellMeshes[iy][ix] = group;
+  group.userData.ix = ix;
+  group.userData.iy = iy;
 }
 
 function rebuildInteriorView() {
@@ -510,14 +514,15 @@ function enterInterior(gx, gy, type = null) {
 
   camera.position.set(0, 5.5, 6.5);
   controls.target.set(0, 0.8, 0);
-  controls.enabled = mode === "build";
+  syncControlScheme();
   controls.minDistance = 3;
   controls.maxDistance = 12;
   controls.maxPolarAngle = Math.PI / 2.05;
   controls.update();
 
   document.getElementById("btn-exit-interior")?.classList.remove("hidden");
-  setStatus(`Dentro de la ${INTERIOR_CFG[objType === "castle" ? "castle" : "house"].label} — construye o pulsa E en la puerta para salir`);
+  document.getElementById("btn-enter-interior")?.classList.add("hidden");
+  setStatus(`Dentro de la ${INTERIOR_CFG[objType === "castle" ? "castle" : "house"].label} — pinta con clic izquierdo · E en la puerta para salir`);
 }
 
 function exitInterior() {
@@ -544,7 +549,7 @@ function exitInterior() {
   controls.update();
 
   document.getElementById("btn-exit-interior")?.classList.add("hidden");
-  setStatus(mode === "build" ? "Construye en 3D — clic en una casa para decorar dentro" : "Explora — entra en casas con E");
+  setStatus(mode === "build" ? "Clic para pintar · botón «Entrar» en casas" : "Explora — pulsa E junto a una casa para entrar");
 }
 
 function syncInteriorExplorerVisual() {
@@ -884,6 +889,47 @@ function refreshPalettes() {
   }, (id) => selectedTool === id);
 }
 
+function pointerToInteriorGrid(clientX, clientY) {
+  const data = activeInterior();
+  if (!data) return null;
+
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+
+  const hits = raycaster.intersectObjects(interiorFloorGroup.children, true);
+  for (const hit of hits) {
+    let node = hit.object;
+    while (node && node.parent !== interiorFloorGroup) node = node.parent;
+    if (node?.userData?.ix != null) {
+      return { x: node.userData.ix, y: node.userData.iy };
+    }
+  }
+
+  if (!raycaster.ray.intersectPlane(interiorPlane, hitPoint)) return null;
+  const grid = interiorFromWorld(hitPoint.x, hitPoint.z, data.cols, data.rows);
+  return inInteriorGrid(grid.x, grid.y, data) ? grid : null;
+}
+
+function updateEnterInteriorButton(cell) {
+  const btn = document.getElementById("btn-enter-interior");
+  if (!btn) return;
+
+  if (
+    mode === "build"
+    && !isInsideInterior()
+    && cell
+    && isEnterableObject(objects[cell.y]?.[cell.x])
+  ) {
+    btn.classList.remove("hidden");
+    btn.dataset.gx = cell.x;
+    btn.dataset.gy = cell.y;
+  } else if (!isInsideInterior()) {
+    btn.classList.add("hidden");
+  }
+}
+
 function pointerToGrid(clientX, clientY) {
   const rect = renderer.domElement.getBoundingClientRect();
   mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
@@ -891,10 +937,7 @@ function pointerToGrid(clientX, clientY) {
   raycaster.setFromCamera(mouse, camera);
 
   if (isInsideInterior()) {
-    const data = activeInterior();
-    if (!raycaster.ray.intersectPlane(interiorPlane, hitPoint)) return null;
-    const grid = interiorFromWorld(hitPoint.x, hitPoint.z, data.cols, data.rows);
-    return inInteriorGrid(grid.x, grid.y, data) ? grid : null;
+    return pointerToInteriorGrid(clientX, clientY);
   }
 
   if (!raycaster.ray.intersectPlane(groundPlane, hitPoint)) return null;
@@ -962,16 +1005,6 @@ function paintAt(x, y) {
 
   if (isInsideInterior()) {
     paintInteriorAt(x, y);
-    return;
-  }
-
-  if (
-    selectedTool !== "erase"
-    && isEnterableObject(objects[y][x])
-    && !selectedObject
-    && !selectedAnimal
-  ) {
-    enterInterior(x, y);
     return;
   }
 
@@ -1256,6 +1289,20 @@ function updateExplore() {
   controls.target.lerp(camTarget, 0.12);
 }
 
+function syncControlScheme() {
+  const building = mode === "build";
+  controls.mouseButtons = {
+    LEFT: null,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.ROTATE,
+  };
+  controls.touches = building
+    ? { ONE: null, TWO: THREE.TOUCH.DOLLY_PAN }
+    : { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  controls.enabled = building || !isInsideInterior();
+  if (isInsideInterior() && mode === "explore") controls.enabled = false;
+}
+
 function setMode(next) {
   mode = next;
   document.querySelectorAll(".mode-btn").forEach((btn) => {
@@ -1276,10 +1323,10 @@ function setMode(next) {
     app.classList.remove("explore-mode");
     app.classList.add("build-mode");
     explorerGroup.visible = false;
-    controls.enabled = true;
+    syncControlScheme();
     setStatus(isInsideInterior()
-      ? "Decora el interior — clic para colocar · E en la puerta para salir"
-      : "Construye — clic en una 🏠 para entrar y decorar");
+      ? "Decora el interior — clic izquierdo para pintar · botón derecho para girar"
+      : "Clic para pintar · elige 🏠 y clic en el mapa · botón «Entrar» en casas");
   } else {
     if (!isInsideInterior()) {
       if (isBlocked(explorer.x, explorer.y)) {
@@ -1298,7 +1345,7 @@ function setMode(next) {
     app.classList.add("explore-mode");
     app.classList.remove("build-mode");
     explorerGroup.visible = true;
-    controls.enabled = false;
+    syncControlScheme();
     setStatus(isInsideInterior()
       ? "Dentro — ve a la puerta y pulsa E para salir"
       : "Explora — pulsa E junto a una casa para entrar");
@@ -1309,9 +1356,14 @@ function updateHighlight(clientX, clientY) {
   if (mode !== "build") {
     highlight.visible = false;
     interiorHighlight.visible = false;
+    hoverCell = null;
+    updateEnterInteriorButton(null);
     return;
   }
   const cell = pointerToGrid(clientX, clientY);
+  hoverCell = cell;
+  updateEnterInteriorButton(cell);
+
   if (!cell) {
     highlight.visible = false;
     interiorHighlight.visible = false;
@@ -1378,6 +1430,8 @@ function animate() {
 function bindInput() {
   renderer.domElement.addEventListener("pointerdown", (e) => {
     if (mode !== "build") return;
+    if (e.button !== 0) return;
+    e.preventDefault();
     painting = true;
     renderer.domElement.setPointerCapture(e.pointerId);
     const cell = pointerToGrid(e.clientX, e.clientY);
@@ -1434,6 +1488,12 @@ function bindInput() {
     updateTimeWidget();
   });
   document.getElementById("btn-exit-interior").addEventListener("click", exitInterior);
+  document.getElementById("btn-enter-interior").addEventListener("click", () => {
+    const btn = document.getElementById("btn-enter-interior");
+    const gx = Number(btn.dataset.gx);
+    const gy = Number(btn.dataset.gy);
+    if (Number.isFinite(gx) && Number.isFinite(gy)) enterInterior(gx, gy);
+  });
 
   document.getElementById("btn-export").addEventListener("click", () => {
     document.getElementById("share-code").value = exportCode();
