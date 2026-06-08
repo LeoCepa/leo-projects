@@ -3,11 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Creaventure — Crea tu mundo</title>
+  <title>Creaventure 3D — Crea tu mundo</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
   <div id="app">
@@ -15,8 +23,8 @@
       <div class="brand">
         <span class="logo">🌍</span>
         <div>
-          <h1>Creaventure</h1>
-          <p>¡Crea tu mundo como quieras!</p>
+          <h1>Creaventure 3D</h1>
+          <p>¡Crea tu mundo en 3D!</p>
         </div>
       </div>
       <div class="top-actions">
@@ -37,8 +45,8 @@
       <div class="welcome-card">
         <div class="ira">✨</div>
         <h2>¡Hola! Soy Ira</h2>
-        <p>Te ayudo a <strong>crear tu mundo como quieras</strong>. Terreno, objetos, animales, día y noche… ¡y comparte tu mundo con un código!</p>
-        <button type="button" id="btn-start" class="btn primary">¡Empezar a crear!</button>
+        <p>Ahora tu mundo es <strong>3D y realista</strong>: luz del sol, sombras, agua brillante y modelos en volumen. Construye, explora y comparte tu mundo con un código.</p>
+        <button type="button" id="btn-start" class="btn primary">¡Entrar al mundo 3D!</button>
       </div>
     </div>
 
@@ -59,8 +67,8 @@
         </div>
       </aside>
 
-      <div class="canvas-wrap">
-        <canvas id="world" width="960" height="600"></canvas>
+      <div class="canvas-wrap" id="world-container">
+        <div id="build-hint" class="hint">🖱️ Clic para pintar · Arrastra para girar · Rueda para zoom</div>
         <div id="explore-hint" class="hint hidden">
           <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> para moverte
         </div>
@@ -76,7 +84,7 @@
     </main>
 
     <footer class="status-bar hidden" id="status-bar">
-      <span id="status-text">Pinta terreno con el ratón o el dedo</span>
+      <span id="status-text">Clic en el mundo 3D para construir</span>
       <span id="tile-info"></span>
     </footer>
 
@@ -99,6 +107,6 @@
       </div>
     </div>
   </div>
-  <script src="game.js"></script>
+  <script type="module" src="game.js"></script>
 </body>
 </html>

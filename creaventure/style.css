@@ -286,26 +286,31 @@ body {
   flex: 1;
   position: relative;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   background: #020617;
   overflow: hidden;
   touch-action: none;
 }
 
-#world {
+.canvas-wrap canvas {
   display: block;
-  max-width: 100%;
-  max-height: 100%;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
-  border: 3px solid rgba(56, 189, 248, 0.2);
-  border-radius: 8px;
+  width: 100% !important;
+  height: 100% !important;
+  outline: none;
+}
+
+.build-mode .canvas-wrap {
   cursor: crosshair;
 }
 
-.explore-mode #world {
+.explore-mode .canvas-wrap {
   cursor: default;
+}
+
+#build-hint {
+  top: 1rem;
+  bottom: auto;
 }
 
 .hint {

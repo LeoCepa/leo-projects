@@ -1,23 +1,23 @@
-const canvas = document.getElementById("world");
-const ctx = canvas.getContext("2d");
-ctx.imageSmoothingEnabled = false;
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 const COLS = 40;
 const ROWS = 25;
-const TILE = 24;
+const CELL = 1;
 const SAVE_KEY = "creaventure-world-v2";
 const CODE_PREFIX = "CV1:";
 const DAY_LENGTH = 4800;
 const DAY_SPEED = 0.35;
+const TERRAIN_H = 0.42;
 
 const TERRAINS = {
-  grass: { emoji: "🟩", label: "Hierba", color: "#4ade80", walk: true },
-  sand: { emoji: "🟨", label: "Arena", color: "#fcd34d", walk: true },
-  water: { emoji: "🟦", label: "Agua", color: "#38bdf8", walk: false },
-  stone: { emoji: "⬜", label: "Piedra", color: "#94a3b8", walk: true },
-  snow: { emoji: "❄️", label: "Nieve", color: "#e2e8f0", walk: true },
-  dirt: { emoji: "🟫", label: "Tierra", color: "#a16207", walk: true },
-  lava: { emoji: "🟥", label: "Lava", color: "#ef4444", walk: false },
+  grass: { emoji: "🟩", label: "Hierba", color: 0x4a9e46, top: 0x62c060, walk: true, rough: 0.94 },
+  sand: { emoji: "🟨", label: "Arena", color: 0xd4b483, top: 0xe8cc98, walk: true, rough: 0.98 },
+  water: { emoji: "🟦", label: "Agua", color: 0x1d8fd8, top: 0x3ab0f0, walk: false, rough: 0.15, metal: 0.35 },
+  stone: { emoji: "⬜", label: "Piedra", color: 0x7a8494, top: 0x959faf, walk: true, rough: 0.82 },
+  snow: { emoji: "❄️", label: "Nieve", color: 0xdde7f0, top: 0xf4f8fc, walk: true, rough: 0.88 },
+  dirt: { emoji: "🟫", label: "Tierra", color: 0x7a4f24, top: 0x94602d, walk: true, rough: 0.96 },
+  lava: { emoji: "🟥", label: "Lava", color: 0xc62812, top: 0xff6b2b, walk: false, rough: 0.4, emissive: 0xff4400 },
 };
 
 const OBJECTS = {
@@ -43,14 +43,14 @@ const OBJECTS = {
 };
 
 const ANIMALS = {
-  dog: { emoji: "🐕", label: "Perro", waterOnly: false },
-  cat: { emoji: "🐈", label: "Gato", waterOnly: false },
-  bunny: { emoji: "🐰", label: "Conejo", waterOnly: false },
-  bird: { emoji: "🐦", label: "Pájaro", waterOnly: false, fly: true },
-  fish: { emoji: "🐟", label: "Pez", waterOnly: true },
-  butterfly: { emoji: "🦋", label: "Mariposa", waterOnly: false, fly: true },
-  dragon: { emoji: "🐉", label: "Dragón", waterOnly: false },
-  unicorn: { emoji: "🦄", label: "Unicornio", waterOnly: false },
+  dog: { emoji: "🐕", label: "Perro", waterOnly: false, color: 0xb87333 },
+  cat: { emoji: "🐈", label: "Gato", waterOnly: false, color: 0x888888 },
+  bunny: { emoji: "🐰", label: "Conejo", waterOnly: false, color: 0xf0e6dc },
+  bird: { emoji: "🐦", label: "Pájaro", waterOnly: false, fly: true, color: 0x3b82f6 },
+  fish: { emoji: "🐟", label: "Pez", waterOnly: true, color: 0xff8c42 },
+  butterfly: { emoji: "🦋", label: "Mariposa", waterOnly: false, fly: true, color: 0xc084fc },
+  dragon: { emoji: "🐉", label: "Dragón", waterOnly: false, color: 0x16a34a },
+  unicorn: { emoji: "🦄", label: "Unicornio", waterOnly: false, color: 0xf472b6 },
 };
 
 const TOOLS = {
@@ -67,23 +67,103 @@ let painting = false;
 let dayTime = DAY_LENGTH * 0.35;
 let dayCyclePaused = false;
 let frameCount = 0;
+let started = false;
 
 const terrain = Array.from({ length: ROWS }, () => Array(COLS).fill("grass"));
 const objects = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 const animals = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+const cellMeshes = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 
-const explorer = {
-  x: 20,
-  y: 12,
-  anim: 0,
-  facing: 1,
-};
-
+const explorer = { x: 20, y: 12, wx: 0, wz: 0, facing: 1, anim: 0 };
 const keys = {};
 const touchDir = { up: false, down: false, left: false, right: false };
 
+const container = document.getElementById("world-container");
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x8ec5ff, 28, 72);
+
+const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 180);
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.maxPolarAngle = Math.PI / 2.15;
+controls.minDistance = 8;
+controls.maxDistance = 55;
+controls.target.set(0, 0, 0);
+
+const hemi = new THREE.HemisphereLight(0xb1e1ff, 0x3d5a34, 0.45);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xfff2d6, 1.35);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 90;
+sun.shadow.camera.left = -32;
+sun.shadow.camera.right = 32;
+sun.shadow.camera.top = 32;
+sun.shadow.camera.bottom = -32;
+sun.shadow.bias = -0.0008;
+scene.add(sun);
+scene.add(sun.target);
+
+const moon = new THREE.DirectionalLight(0x8eb4ff, 0.18);
+moon.castShadow = false;
+scene.add(moon);
+
+const worldGroup = new THREE.Group();
+scene.add(worldGroup);
+
+const explorerGroup = new THREE.Group();
+scene.add(explorerGroup);
+
+const highlight = new THREE.Mesh(
+  new THREE.BoxGeometry(CELL * 0.96, 0.06, CELL * 0.96),
+  new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45 })
+);
+highlight.visible = false;
+highlight.position.y = TERRAIN_H + 0.04;
+scene.add(highlight);
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const hitPoint = new THREE.Vector3();
+const matCache = new Map();
+const waterMeshes = [];
+
+function mat(key, opts) {
+  if (!matCache.has(key)) matCache.set(key, new THREE.MeshStandardMaterial(opts));
+  return matCache.get(key);
+}
+
+function gridToWorld(gx, gy) {
+  return {
+    x: gx * CELL - (COLS * CELL) / 2 + CELL / 2,
+    z: gy * CELL - (ROWS * CELL) / 2 + CELL / 2,
+  };
+}
+
+function worldToGrid(wx, wz) {
+  const gx = Math.floor((wx + (COLS * CELL) / 2 - CELL / 2) / CELL);
+  const gy = Math.floor((wz + (ROWS * CELL) / 2 - CELL / 2) / CELL);
+  return { x: gx, y: gy };
+}
+
+function inGrid(x, y) {
+  return x >= 0 && y >= 0 && x < COLS && y < ROWS;
+}
+
 function canWalkTile(x, y, flyer = false) {
-  if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return false;
+  if (!inGrid(x, y)) return false;
   const t = terrain[y][x];
   if (!flyer && !TERRAINS[t].walk) return false;
   if (flyer && t === "lava") return false;
@@ -96,20 +176,298 @@ function isBlocked(x, y) {
   return !canWalkTile(x, y, false);
 }
 
+function disposeObject(obj) {
+  if (!obj) return;
+  obj.traverse((child) => {
+    if (child.geometry) child.geometry.dispose();
+  });
+}
+
+function addMesh(group, geometry, material, x, y, z, sx = 1, sy = 1, sz = 1, cast = true) {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(x, y, z);
+  mesh.scale.set(sx, sy, sz);
+  mesh.castShadow = cast;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  return mesh;
+}
+
+function buildTerrainMesh(type) {
+  const info = TERRAINS[type];
+  const group = new THREE.Group();
+  const isWater = type === "water";
+  const h = isWater ? 0.18 : TERRAIN_H;
+
+  addMesh(
+    group,
+    new THREE.BoxGeometry(CELL * 0.98, h, CELL * 0.98),
+    mat(`t-${type}`, {
+      color: info.color,
+      roughness: info.rough,
+      metalness: info.metal || 0,
+      emissive: info.emissive || 0x000000,
+      emissiveIntensity: info.emissive ? 0.55 : 0,
+      transparent: isWater,
+      opacity: isWater ? 0.82 : 1,
+    }),
+    0,
+    h / 2,
+    0
+  );
+
+  if (!isWater) {
+    addMesh(
+      group,
+      new THREE.BoxGeometry(CELL * 0.88, 0.05, CELL * 0.88),
+      mat(`top-${type}`, { color: info.top, roughness: info.rough, metalness: info.metal || 0 }),
+      0,
+      h + 0.02,
+      0,
+      1,
+      1,
+      1,
+      false
+    );
+  } else {
+    const w = addMesh(
+      group,
+      new THREE.BoxGeometry(CELL * 0.92, 0.04, CELL * 0.92),
+      mat("water-sheen", {
+        color: 0xa8e4ff,
+        roughness: 0.08,
+        metalness: 0.65,
+        transparent: true,
+        opacity: 0.55,
+      }),
+      0,
+      h + 0.02,
+      0,
+      1,
+      1,
+      1,
+      false
+    );
+    waterMeshes.push(w);
+  }
+
+  return group;
+}
+
+function buildTree(pine = false) {
+  const g = new THREE.Group();
+  addMesh(g, new THREE.CylinderGeometry(0.08, 0.12, 0.55, 8), mat("trunk", { color: 0x6b4423, roughness: 0.95 }), 0, 0.28, 0);
+  const foliage = pine
+    ? new THREE.ConeGeometry(0.38, 0.95, 8)
+    : new THREE.DodecahedronGeometry(0.42);
+  addMesh(g, foliage, mat(pine ? "pine" : "tree", { color: pine ? 0x1f6b34 : 0x2f9e44, roughness: 0.88 }), 0, pine ? 0.95 : 0.82, 0);
+  return g;
+}
+
+function buildHouse(large = false) {
+  const g = new THREE.Group();
+  const w = large ? 0.82 : 0.62;
+  const h = large ? 0.72 : 0.52;
+  addMesh(g, new THREE.BoxGeometry(w, h, w), mat("wall", { color: large ? 0xb8bec8 : 0xf1e7d0, roughness: 0.86 }), 0, h / 2 + TERRAIN_H, 0);
+  addMesh(g, new THREE.ConeGeometry(w * 0.72, 0.38, 4), mat("roof", { color: large ? 0x5c4a72 : 0xc0392b, roughness: 0.78 }), 0, h + TERRAIN_H + 0.16, 0, 1, 1, 1);
+  if (large) {
+    addMesh(g, new THREE.CylinderGeometry(0.12, 0.14, 0.55, 6), mat("tower", { color: 0x9099a8, roughness: 0.8 }), 0.28, 0.92, 0.28);
+    addMesh(g, new THREE.CylinderGeometry(0.12, 0.14, 0.55, 6), mat("tower2", { color: 0x9099a8, roughness: 0.8 }), -0.28, 0.92, -0.28);
+  } else {
+    addMesh(g, new THREE.BoxGeometry(0.14, 0.22, 0.04), mat("door", { color: 0x4a3728, roughness: 0.9 }), 0, TERRAIN_H + 0.12, w / 2 + 0.02);
+  }
+  return g;
+}
+
+function buildProp(type) {
+  const g = new THREE.Group();
+  const y0 = TERRAIN_H;
+
+  switch (type) {
+    case "tree":
+      return buildTree(false);
+    case "pine":
+      return buildTree(true);
+    case "house":
+      return buildHouse(false);
+    case "castle":
+      return buildHouse(true);
+    case "rock":
+      addMesh(g, new THREE.DodecahedronGeometry(0.28, 0), mat("rock", { color: 0x7c8594, roughness: 0.92 }), 0, y0 + 0.22, 0, 1.1, 0.9, 1);
+      return g;
+    case "flower":
+      addMesh(g, new THREE.CylinderGeometry(0.02, 0.02, 0.22, 6), mat("stem", { color: 0x228b3a, roughness: 0.9 }), 0, y0 + 0.12, 0);
+      addMesh(g, new THREE.SphereGeometry(0.1, 8, 8), mat("petal", { color: 0xff6b9d, roughness: 0.55 }), 0, y0 + 0.28, 0);
+      return g;
+    case "mushroom":
+      addMesh(g, new THREE.CylinderGeometry(0.05, 0.07, 0.16, 8), mat("mstem", { color: 0xf5f0e6, roughness: 0.9 }), 0, y0 + 0.1, 0);
+      addMesh(g, new THREE.SphereGeometry(0.14, 10, 8), mat("mcap", { color: 0xd62828, roughness: 0.7 }), 0, y0 + 0.24, 0, 1.2, 0.7, 1.2);
+      return g;
+    case "bush":
+      addMesh(g, new THREE.SphereGeometry(0.22, 8, 8), mat("bush", { color: 0x2d7a36, roughness: 0.9 }), 0, y0 + 0.18, 0, 1.2, 0.85, 1.2);
+      return g;
+    case "cactus":
+      addMesh(g, new THREE.CylinderGeometry(0.1, 0.12, 0.55, 8), mat("cactus", { color: 0x3d8b40, roughness: 0.88 }), 0, y0 + 0.3, 0);
+      addMesh(g, new THREE.CylinderGeometry(0.06, 0.06, 0.22, 6), mat("carm", { color: 0x3d8b40, roughness: 0.88 }), 0.12, y0 + 0.34, 0, 1, 1, 1);
+      return g;
+    case "fence":
+      for (let i = -1; i <= 1; i++) {
+        addMesh(g, new THREE.BoxGeometry(0.06, 0.32, 0.06), mat("post", { color: 0x8b6914, roughness: 0.92 }), i * 0.28, y0 + 0.18, 0);
+      }
+      addMesh(g, new THREE.BoxGeometry(0.72, 0.05, 0.05), mat("rail", { color: 0x8b6914, roughness: 0.92 }), 0, y0 + 0.26, 0);
+      return g;
+    case "bridge":
+      addMesh(g, new THREE.BoxGeometry(0.88, 0.08, 0.42), mat("bridge", { color: 0x8b5a2b, roughness: 0.86 }), 0, y0 + 0.08, 0);
+      return g;
+    case "fountain":
+      addMesh(g, new THREE.CylinderGeometry(0.28, 0.34, 0.18, 12), mat("fbase", { color: 0xa8b0bc, roughness: 0.55, metalness: 0.15 }), 0, y0 + 0.1, 0);
+      addMesh(g, new THREE.CylinderGeometry(0.08, 0.08, 0.35, 8), mat("fpipe", { color: 0xc5ccd6, roughness: 0.45, metalness: 0.25 }), 0, y0 + 0.32, 0);
+      addMesh(g, new THREE.SphereGeometry(0.09, 8, 8), mat("fwater", { color: 0x66ccff, roughness: 0.1, metalness: 0.4, transparent: true, opacity: 0.75 }), 0, y0 + 0.52, 0);
+      return g;
+    case "campfire": {
+      addMesh(g, new THREE.CylinderGeometry(0.16, 0.18, 0.08, 8), mat("ashes", { color: 0x3a3a3a, roughness: 1 }), 0, y0 + 0.06, 0, 1, 1, 1, false);
+      addMesh(g, new THREE.ConeGeometry(0.1, 0.28, 6), mat("flame", { color: 0xff7a18, emissive: 0xff5500, emissiveIntensity: 1.2, roughness: 0.4 }), 0, y0 + 0.22, 0);
+      const light = new THREE.PointLight(0xff8833, 0.8, 4);
+      light.position.set(0, y0 + 0.35, 0);
+      light.userData.flicker = Math.random() * 10;
+      g.add(light);
+      return g;
+    }
+    case "crystal":
+      addMesh(g, new THREE.OctahedronGeometry(0.18, 0), mat("crystal", { color: 0x67e8f9, roughness: 0.08, metalness: 0.2, transparent: true, opacity: 0.85 }), 0, y0 + 0.22, 0, 1, 1.6, 1);
+      return g;
+    case "star":
+      addMesh(g, new THREE.OctahedronGeometry(0.14, 0), mat("star", { color: 0xfacc15, emissive: 0xfbbf24, emissiveIntensity: 0.8, roughness: 0.3 }), 0, y0 + 0.45, 0);
+      return g;
+    case "cloud":
+      addMesh(g, new THREE.SphereGeometry(0.18, 8, 8), mat("cloud", { color: 0xffffff, roughness: 0.95 }), -0.12, y0 + 0.75, 0, 1, 0.8, 1, false);
+      addMesh(g, new THREE.SphereGeometry(0.22, 8, 8), mat("cloud2", { color: 0xffffff, roughness: 0.95 }), 0.08, y0 + 0.82, 0, 1.1, 0.75, 1, false);
+      return g;
+    case "rainbow": {
+      const colors = [0xef4444, 0xf97316, 0xeab308, 0x22c55e, 0x3b82f6, 0x8b5cf6];
+      colors.forEach((c, i) => {
+        addMesh(g, new THREE.TorusGeometry(0.35 + i * 0.03, 0.015, 6, 24, Math.PI), mat(`rb${i}`, { color: c, roughness: 0.45 }), 0, y0 + 0.35, 0, 1, 1, 1, false);
+      });
+      return g;
+    }
+    case "tent":
+      addMesh(g, new THREE.ConeGeometry(0.42, 0.55, 4), mat("tent", { color: 0xf97316, roughness: 0.82 }), 0, y0 + 0.32, 0);
+      return g;
+    case "boat":
+      addMesh(g, new THREE.BoxGeometry(0.55, 0.12, 0.28), mat("hull", { color: 0x8b4513, roughness: 0.88 }), 0, y0 + 0.08, 0);
+      addMesh(g, new THREE.CylinderGeometry(0.02, 0.02, 0.45, 6), mat("mast", { color: 0x654321, roughness: 0.9 }), 0.08, y0 + 0.35, 0);
+      addMesh(g, new THREE.PlaneGeometry(0.32, 0.24), mat("sail", { color: 0xffffff, roughness: 0.95, side: THREE.DoubleSide }), 0.08, y0 + 0.48, 0.02);
+      return g;
+    default:
+      return g;
+  }
+}
+
+function buildAnimal(type) {
+  const info = ANIMALS[type];
+  const g = new THREE.Group();
+  const y0 = TERRAIN_H + (info.fly ? 0.55 : 0);
+  const bodyMat = mat(`ani-${type}`, { color: info.color, roughness: 0.72 });
+
+  if (type === "fish") {
+    addMesh(g, new THREE.SphereGeometry(0.14, 8, 8), bodyMat, 0, y0 + 0.1, 0, 1.4, 0.8, 0.7);
+    addMesh(g, new THREE.ConeGeometry(0.08, 0.14, 4), bodyMat, -0.18, y0 + 0.1, 0, 1, 1, 1, false);
+    return g;
+  }
+
+  if (type === "bird" || type === "butterfly") {
+    addMesh(g, new THREE.SphereGeometry(0.08, 8, 8), bodyMat, 0, y0 + 0.12, 0);
+    addMesh(g, new THREE.PlaneGeometry(0.18, 0.1), bodyMat, 0, y0 + 0.12, 0, 1, 1, 1, false);
+    return g;
+  }
+
+  addMesh(g, new THREE.SphereGeometry(0.16, 10, 10), bodyMat, 0, y0 + 0.18, 0, 1.2, 0.9, 1.4);
+  addMesh(g, new THREE.SphereGeometry(0.1, 8, 8), bodyMat, 0, y0 + 0.32, 0.14);
+
+  if (type === "unicorn") {
+    addMesh(g, new THREE.ConeGeometry(0.04, 0.18, 6), mat("horn", { color: 0xfde68a, roughness: 0.35, metalness: 0.35 }), 0, y0 + 0.48, 0.16);
+  }
+  if (type === "dragon") {
+    addMesh(g, new THREE.ConeGeometry(0.05, 0.22, 5), mat("dragwing", { color: 0x15803d, roughness: 0.75 }), 0.12, y0 + 0.24, -0.05, 1, 1, 1, false);
+  }
+  if (type === "bunny") {
+    addMesh(g, new THREE.CapsuleGeometry(0.03, 0.14, 4, 6), bodyMat, -0.05, y0 + 0.42, 0.02);
+    addMesh(g, new THREE.CapsuleGeometry(0.03, 0.14, 4, 6), bodyMat, 0.05, y0 + 0.42, 0.02);
+  }
+
+  return g;
+}
+
+function buildExplorerMesh() {
+  const g = new THREE.Group();
+  const skin = mat("skin", { color: 0xffdbac, roughness: 0.75 });
+  const shirt = mat("shirt", { color: 0x2563eb, roughness: 0.82 });
+  addMesh(g, new THREE.CapsuleGeometry(0.14, 0.28, 6, 10), shirt, 0, TERRAIN_H + 0.38, 0);
+  addMesh(g, new THREE.SphereGeometry(0.13, 10, 10), skin, 0, TERRAIN_H + 0.68, 0);
+  addMesh(g, new THREE.BoxGeometry(0.24, 0.08, 0.12), mat("hair", { color: 0x3b2314, roughness: 0.9 }), 0, TERRAIN_H + 0.78, 0);
+  return g;
+}
+
+const explorerMesh = buildExplorerMesh();
+explorerGroup.add(explorerMesh);
+
+function rebuildCell(gx, gy) {
+  if (cellMeshes[gy][gx]) {
+    worldGroup.remove(cellMeshes[gy][gx]);
+    disposeObject(cellMeshes[gy][gx]);
+  }
+
+  const group = new THREE.Group();
+  const { x, z } = gridToWorld(gx, gy);
+  group.position.set(x, 0, z);
+
+  const t = terrain[gy][gx];
+  const terrainMesh = buildTerrainMesh(t);
+  group.add(terrainMesh);
+
+  if (objects[gy][gx]) {
+    const prop = buildProp(objects[gy][gx]);
+    group.add(prop);
+  }
+  if (animals[gy][gx]) {
+    const ani = buildAnimal(animals[gy][gx]);
+    ani.userData.animalType = animals[gy][gx];
+    group.add(ani);
+  }
+
+  worldGroup.add(group);
+  cellMeshes[gy][gx] = group;
+}
+
+function rebuildWorld() {
+  waterMeshes.length = 0;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (cellMeshes[y][x]) {
+        worldGroup.remove(cellMeshes[y][x]);
+        disposeObject(cellMeshes[y][x]);
+        cellMeshes[y][x] = null;
+      }
+      rebuildCell(x, y);
+    }
+  }
+  syncExplorerVisual();
+}
+
+function syncExplorerVisual() {
+  const { x, z } = gridToWorld(explorer.x, explorer.y);
+  explorer.wx = x;
+  explorer.wz = z;
+  explorerGroup.position.set(explorer.wx, 0, explorer.wz);
+  explorerGroup.rotation.y = explorer.facing > 0 ? -0.4 : 0.4;
+}
+
 function serializeWorld() {
-  return {
-    v: 2,
-    terrain,
-    objects,
-    animals,
-    explorer: { x: explorer.x, y: explorer.y },
-    dayTime,
-  };
+  return { v: 2, terrain, objects, animals, explorer: { x: explorer.x, y: explorer.y }, dayTime };
 }
 
 function applyWorld(data) {
   if (!data?.terrain || !data.objects) return false;
-
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
       terrain[y][x] = TERRAINS[data.terrain[y]?.[x]] ? data.terrain[y][x] : "grass";
@@ -119,13 +477,12 @@ function applyWorld(data) {
       animals[y][x] = ani && ANIMALS[ani] ? ani : null;
     }
   }
-
   if (data.explorer) {
     explorer.x = data.explorer.x ?? explorer.x;
     explorer.y = data.explorer.y ?? explorer.y;
   }
   if (typeof data.dayTime === "number") dayTime = data.dayTime % DAY_LENGTH;
-
+  rebuildWorld();
   return true;
 }
 
@@ -145,15 +502,13 @@ function saveWorld() {
 }
 
 function exportCode() {
-  const json = JSON.stringify(serializeWorld());
-  return CODE_PREFIX + btoa(unescape(encodeURIComponent(json)));
+  return CODE_PREFIX + btoa(unescape(encodeURIComponent(JSON.stringify(serializeWorld()))));
 }
 
 function importCode(code) {
   const trimmed = code.trim();
   const raw = trimmed.startsWith(CODE_PREFIX) ? trimmed.slice(CODE_PREFIX.length) : trimmed;
-  const json = decodeURIComponent(escape(atob(raw)));
-  return applyWorld(JSON.parse(json));
+  return applyWorld(JSON.parse(decodeURIComponent(escape(atob(raw)))));
 }
 
 function setStatus(text) {
@@ -173,7 +528,6 @@ function makePalette(containerId, items, onSelect, getActive) {
     btn.className = "palette-btn";
     btn.title = item.label;
     btn.textContent = item.emoji;
-    btn.dataset.id = id;
     if (getActive(id)) btn.classList.add("active");
     btn.addEventListener("click", () => onSelect(id));
     container.appendChild(btn);
@@ -195,7 +549,7 @@ function refreshPalettes() {
     selectedAnimal = null;
     selectedTool = "brush";
     refreshPalettes();
-    setStatus(`Objeto: ${OBJECTS[id].label} — clic para colocar`);
+    setStatus(`Objeto: ${OBJECTS[id].label}`);
   }, (id) => selectedTool === "brush" && selectedObject === id);
 
   makePalette("animal-palette", ANIMALS, (id) => {
@@ -203,7 +557,7 @@ function refreshPalettes() {
     selectedObject = null;
     selectedTool = "brush";
     refreshPalettes();
-    setStatus(`Animal: ${ANIMALS[id].label} — clic para colocar`);
+    setStatus(`Animal: ${ANIMALS[id].label}`);
   }, (id) => selectedTool === "brush" && selectedAnimal === id);
 
   makePalette("tool-palette", TOOLS, (id) => {
@@ -211,20 +565,18 @@ function refreshPalettes() {
     selectedObject = null;
     selectedAnimal = null;
     refreshPalettes();
-    setStatus(id === "erase" ? "Borrar: quita todo y pone hierba" : "Pincel activo");
+    setStatus(id === "erase" ? "Borrar casilla" : "Pincel activo");
   }, (id) => selectedTool === id);
 }
 
-function gridFromEvent(e) {
-  const rect = canvas.getBoundingClientRect();
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
-  const px = (e.clientX - rect.left) * scaleX;
-  const py = (e.clientY - rect.top) * scaleY;
-  const x = Math.floor(px / TILE);
-  const y = Math.floor(py / TILE);
-  if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return null;
-  return { x, y };
+function pointerToGrid(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  if (!raycaster.ray.intersectPlane(groundPlane, hitPoint)) return null;
+  const grid = worldToGrid(hitPoint.x, hitPoint.z);
+  return inGrid(grid.x, grid.y) ? grid : null;
 }
 
 function canPlaceAnimal(type, x, y) {
@@ -255,18 +607,14 @@ function paintAt(x, y) {
       objects[y][x] = null;
     }
   } else if (selectedObject) {
-    if (canPlaceObject(selectedObject, x, y)) {
-      objects[y][x] = selectedObject;
-    }
+    if (canPlaceObject(selectedObject, x, y)) objects[y][x] = selectedObject;
   } else {
     terrain[y][x] = selectedTerrain;
-    if (selectedTerrain === "water" || selectedTerrain === "lava") {
-      animals[y][x] = null;
-    }
+    if (selectedTerrain === "water" || selectedTerrain === "lava") animals[y][x] = null;
   }
 
-  const t = TERRAINS[terrain[y][x]].label;
-  const bits = [t];
+  rebuildCell(x, y);
+  const bits = [TERRAINS[terrain[y][x]].label];
   if (objects[y][x]) bits.push(OBJECTS[objects[y][x]].label);
   if (animals[y][x]) bits.push(ANIMALS[animals[y][x]].label);
   setTileInfo(bits.join(" · "));
@@ -289,9 +637,7 @@ function randomWorld() {
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
       const edge = x < 2 || y < 2 || x >= COLS - 2 || y >= ROWS - 2;
-      terrain[y][x] = edge
-        ? (Math.random() < 0.5 ? "water" : "sand")
-        : terrains[Math.floor(Math.random() * terrains.length)];
+      terrain[y][x] = edge ? (Math.random() < 0.5 ? "water" : "sand") : terrains[Math.floor(Math.random() * terrains.length)];
       objects[y][x] = null;
       animals[y][x] = null;
     }
@@ -314,7 +660,8 @@ function randomWorld() {
   const spawn = findSpawn();
   explorer.x = spawn.x;
   explorer.y = spawn.y;
-  setStatus("🎲 Mundo aleatorio creado");
+  rebuildWorld();
+  setStatus("🎲 Mundo 3D aleatorio creado");
 }
 
 function clearWorld() {
@@ -327,7 +674,8 @@ function clearWorld() {
   }
   explorer.x = 20;
   explorer.y = 12;
-  setStatus("Mundo limpio — empieza de cero");
+  rebuildWorld();
+  setStatus("Mundo limpio");
 }
 
 function dayPhase() {
@@ -355,103 +703,36 @@ function updateTimeWidget() {
   }
 
   toggle.textContent = dayCyclePaused ? "▶️" : "⏸️";
-  toggle.title = dayCyclePaused ? "Reanudar ciclo" : "Pausar ciclo";
 }
 
-function drawDayNightOverlay() {
+function updateLighting() {
   const phase = dayPhase();
-  let r = 8;
-  let g = 12;
-  let b = 40;
-  let a = 0;
+  const angle = phase * Math.PI * 2 - Math.PI / 2;
+  const radius = 38;
+  sun.position.set(Math.cos(angle) * radius, Math.sin(angle) * radius + 8, 14);
+  sun.target.position.set(0, 0, 0);
+  moon.position.set(-sun.position.x * 0.5, Math.max(6, -sun.position.y + 10), -sun.position.z * 0.4);
 
-  if (phase < 0.2 || phase > 0.8) a = 0.52;
-  else if (phase < 0.28) a = 0.28 - (phase - 0.2) * 2.5;
-  else if (phase > 0.72) a = 0.28 - (0.8 - phase) * 2.5;
-  else a = 0;
+  const daylight = Math.max(0, Math.sin(angle + Math.PI / 2));
+  sun.intensity = 0.25 + daylight * 1.25;
+  hemi.intensity = 0.18 + daylight * 0.38;
+  moon.intensity = 0.05 + (1 - daylight) * 0.22;
 
-  if (phase > 0.62 && phase < 0.78) {
-    r = 80;
-    g = 30;
-    b = 10;
-    a = Math.max(a, 0.12);
-  } else if (phase > 0.22 && phase < 0.38) {
-    r = 90;
-    g = 50;
-    b = 20;
-    a = Math.max(a, 0.1);
-  }
+  const skyDay = new THREE.Color(0x7ecbff);
+  const skySunset = new THREE.Color(0xff9a5c);
+  const skyNight = new THREE.Color(0x0b1533);
+  const sky = new THREE.Color();
+  if (daylight > 0.55) sky.copy(skyDay);
+  else if (daylight > 0.15) sky.copy(skySunset).lerp(skyDay, (daylight - 0.15) / 0.4);
+  else sky.copy(skyNight).lerp(skySunset, daylight / 0.15);
 
-  if (a <= 0) return;
-  ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${a})`;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
-function drawTerrainTile(x, y, type) {
-  const info = TERRAINS[type];
-  ctx.fillStyle = info.color;
-  ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
-
-  if (type === "grass") {
-    ctx.fillStyle = "rgba(34, 197, 94, 0.35)";
-    ctx.fillRect(x * TILE + 4, y * TILE + 10, 6, 4);
-    ctx.fillRect(x * TILE + 14, y * TILE + 16, 5, 4);
-  } else if (type === "water") {
-    ctx.fillStyle = "rgba(255,255,255,0.25)";
-    ctx.fillRect(x * TILE + 2, y * TILE + 6 + ((x + y + frameCount / 20) | 0) % 3 * 2, TILE - 4, 3);
-  } else if (type === "lava") {
-    ctx.fillStyle = "#fbbf24";
-    ctx.fillRect(x * TILE + 6, y * TILE + 8 + ((frameCount / 12 + x) | 0) % 3, 10, 4);
-  } else if (type === "snow") {
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    ctx.fillRect(x * TILE + 8, y * TILE + 8, 4, 4);
-  } else if (type === "sand") {
-    ctx.fillStyle = "rgba(217, 119, 6, 0.25)";
-    for (let i = 0; i < 3; i++) {
-      ctx.fillRect(x * TILE + 4 + i * 6, y * TILE + 12 + (i % 2) * 4, 3, 2);
-    }
-  }
-
-  ctx.strokeStyle = "rgba(0,0,0,0.06)";
-  ctx.strokeRect(x * TILE + 0.5, y * TILE + 0.5, TILE - 1, TILE - 1);
-}
-
-function drawEmojiAt(x, y, emoji, bounce = 0) {
-  ctx.font = `${TILE - 4}px serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(emoji, x * TILE + TILE / 2, y * TILE + TILE / 2 + 1 - bounce);
-}
-
-function drawObject(x, y, type) {
-  drawEmojiAt(x, y, OBJECTS[type].emoji);
-}
-
-function drawAnimal(x, y, type) {
-  const info = ANIMALS[type];
-  const bounce = info.fly ? Math.sin((frameCount + x * 17 + y * 11) * 0.12) * 3 : Math.sin((frameCount + x * 9) * 0.08) * 1.5;
-  drawEmojiAt(x, y, info.emoji, bounce);
-}
-
-function drawExplorer() {
-  const px = explorer.x * TILE + TILE / 2;
-  const py = explorer.y * TILE + TILE / 2;
-  const bounce = Math.sin(explorer.anim * 0.15) * 2;
-
-  ctx.font = "18px serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("🧒", px, py - bounce);
-
-  ctx.fillStyle = "rgba(56, 189, 248, 0.35)";
-  ctx.beginPath();
-  ctx.ellipse(px, py + 10, 8, 3, 0, 0, Math.PI * 2);
-  ctx.fill();
+  scene.background = sky;
+  scene.fog.color.copy(sky);
+  renderer.toneMappingExposure = 0.85 + daylight * 0.35;
 }
 
 function updateAnimals() {
   if (frameCount % 45 !== 0) return;
-
   const movers = [];
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
@@ -461,11 +742,9 @@ function updateAnimals() {
   if (!movers.length) return;
 
   const pick = movers[Math.floor(Math.random() * movers.length)];
-  const dirs = [
-    [1, 0], [-1, 0], [0, 1], [0, -1],
-  ].sort(() => Math.random() - 0.5);
-
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]].sort(() => Math.random() - 0.5);
   const info = ANIMALS[pick.type];
+
   for (const [dx, dy] of dirs) {
     const nx = pick.x + dx;
     const ny = pick.y + dy;
@@ -473,26 +752,12 @@ function updateAnimals() {
     if (info.waterOnly && terrain[ny][nx] !== "water") continue;
     if (!info.waterOnly && !info.fly && terrain[ny][nx] === "water") continue;
     if (animals[ny][nx]) continue;
-
     animals[pick.y][pick.x] = null;
     animals[ny][nx] = pick.type;
+    rebuildCell(pick.x, pick.y);
+    rebuildCell(nx, ny);
     break;
   }
-}
-
-function render() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  for (let y = 0; y < ROWS; y++) {
-    for (let x = 0; x < COLS; x++) {
-      drawTerrainTile(x, y, terrain[y][x]);
-      if (objects[y][x]) drawObject(x, y, objects[y][x]);
-      if (animals[y][x]) drawAnimal(x, y, animals[y][x]);
-    }
-  }
-
-  if (mode === "explore") drawExplorer();
-  drawDayNightOverlay();
 }
 
 function tryMove(dx, dy) {
@@ -512,14 +777,28 @@ function updateExplore() {
   if (keys.ArrowRight || keys.KeyD || touchDir.right) dx = 1;
   if (keys.ArrowUp || keys.KeyW || touchDir.up) dy = -1;
   if (keys.ArrowDown || keys.KeyS || touchDir.down) dy = 1;
-
   if (dx !== 0 && dy !== 0) {
     if (Math.random() < 0.5) dy = 0;
     else dx = 0;
   }
-
   if (dx || dy) tryMove(dx, dy);
   updateAnimals();
+
+  const target = gridToWorld(explorer.x, explorer.y);
+  explorer.wx += (target.x - explorer.wx) * 0.22;
+  explorer.wz += (target.z - explorer.wz) * 0.22;
+  explorerGroup.position.set(explorer.wx, 0, explorer.wz);
+  explorerGroup.rotation.y = explorer.facing > 0 ? -0.5 : 0.5;
+  explorerMesh.position.y = Math.sin(explorer.anim * 0.35) * 0.03;
+
+  const camTarget = new THREE.Vector3(explorer.wx, TERRAIN_H + 0.5, explorer.wz);
+  const camPos = new THREE.Vector3(
+    explorer.wx - explorer.facing * 5.5,
+    TERRAIN_H + 4.8,
+    explorer.wz + 5.5
+  );
+  camera.position.lerp(camPos, 0.08);
+  controls.target.lerp(camTarget, 0.12);
 }
 
 function setMode(next) {
@@ -529,75 +808,122 @@ function setMode(next) {
   });
 
   const toolbar = document.getElementById("toolbar");
-  const hint = document.getElementById("explore-hint");
+  const buildHint = document.getElementById("build-hint");
+  const exploreHint = document.getElementById("explore-hint");
   const touchPad = document.getElementById("touch-pad");
   const app = document.getElementById("app");
 
   if (mode === "build") {
     toolbar.classList.remove("hidden");
-    hint.classList.add("hidden");
+    buildHint.classList.remove("hidden");
+    exploreHint.classList.add("hidden");
     touchPad.classList.add("hidden");
     app.classList.remove("explore-mode");
-    setStatus("Construye: terreno, objetos y animales");
+    app.classList.add("build-mode");
+    explorerGroup.visible = false;
+    controls.enabled = true;
+    setStatus("Construye en 3D — clic para colocar");
   } else {
     if (isBlocked(explorer.x, explorer.y)) {
       const spawn = findSpawn();
       explorer.x = spawn.x;
       explorer.y = spawn.y;
     }
+    syncExplorerVisual();
     toolbar.classList.add("hidden");
-    hint.classList.remove("hidden");
+    buildHint.classList.add("hidden");
+    exploreHint.classList.remove("hidden");
     touchPad.classList.remove("hidden");
     app.classList.add("explore-mode");
-    setStatus("Explora — los animales se mueven solos 🐾");
+    app.classList.remove("build-mode");
+    explorerGroup.visible = true;
+    controls.enabled = false;
+    setStatus("Explora tu mundo 3D 🐾");
   }
 }
 
-function openShareModal() {
-  document.getElementById("share-modal").classList.remove("hidden");
-  document.getElementById("share-code").value = "";
-  document.getElementById("import-code").value = "";
+function updateHighlight(clientX, clientY) {
+  if (mode !== "build") {
+    highlight.visible = false;
+    return;
+  }
+  const cell = pointerToGrid(clientX, clientY);
+  if (!cell) {
+    highlight.visible = false;
+    return;
+  }
+  const { x, z } = gridToWorld(cell.x, cell.y);
+  highlight.position.set(x, TERRAIN_H + 0.04, z);
+  highlight.visible = true;
 }
 
-function closeShareModal() {
-  document.getElementById("share-modal").classList.add("hidden");
+function resize() {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
 }
 
-function loop() {
+function animate() {
   frameCount++;
   if (!dayCyclePaused) {
     dayTime = (dayTime + DAY_SPEED) % DAY_LENGTH;
     updateTimeWidget();
   }
+  updateLighting();
+
+  scene.traverse((obj) => {
+    if (obj.isPointLight && obj.userData.flicker != null) {
+      obj.intensity = 0.55 + Math.sin(frameCount * 0.08 + obj.userData.flicker) * 0.25;
+    }
+  });
+
+  waterMeshes.forEach((mesh, i) => {
+    mesh.position.y = 0.2 + Math.sin(frameCount * 0.04 + i) * 0.015;
+  });
+
+  worldGroup.children.forEach((cell) => {
+    cell.children.forEach((child) => {
+      if (child.userData.animalType) {
+        const info = ANIMALS[child.userData.animalType];
+        if (info?.fly) child.position.y = Math.sin(frameCount * 0.06 + cell.position.x) * 0.08;
+      }
+    });
+  });
 
   if (mode === "explore") updateExplore();
-  render();
-  requestAnimationFrame(loop);
+  else controls.update();
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
 }
 
 function bindInput() {
-  canvas.addEventListener("pointerdown", (e) => {
+  renderer.domElement.addEventListener("pointerdown", (e) => {
     if (mode !== "build") return;
     painting = true;
-    canvas.setPointerCapture(e.pointerId);
-    const cell = gridFromEvent(e);
+    renderer.domElement.setPointerCapture(e.pointerId);
+    const cell = pointerToGrid(e.clientX, e.clientY);
     if (cell) paintAt(cell.x, cell.y);
   });
 
-  canvas.addEventListener("pointermove", (e) => {
+  renderer.domElement.addEventListener("pointermove", (e) => {
+    updateHighlight(e.clientX, e.clientY);
     if (!painting || mode !== "build") return;
-    const cell = gridFromEvent(e);
+    const cell = pointerToGrid(e.clientX, e.clientY);
     if (cell) paintAt(cell.x, cell.y);
   });
 
-  canvas.addEventListener("pointerup", () => { painting = false; });
-  canvas.addEventListener("pointerleave", () => { painting = false; });
+  renderer.domElement.addEventListener("pointerup", () => { painting = false; });
+  renderer.domElement.addEventListener("pointerleave", () => {
+    painting = false;
+    highlight.visible = false;
+  });
 
   document.addEventListener("keydown", (e) => {
     keys[e.code] = true;
-    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) {
-      e.preventDefault();
-    }
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
   });
   document.addEventListener("keyup", (e) => { keys[e.code] = false; });
 
@@ -618,85 +944,98 @@ function bindInput() {
   document.getElementById("btn-random").addEventListener("click", randomWorld);
   document.getElementById("btn-clear").addEventListener("click", clearWorld);
   document.getElementById("btn-save").addEventListener("click", saveWorld);
-  document.getElementById("btn-share").addEventListener("click", openShareModal);
-  document.getElementById("btn-close-share").addEventListener("click", closeShareModal);
+  document.getElementById("btn-share").addEventListener("click", () => {
+    document.getElementById("share-modal").classList.remove("hidden");
+    document.getElementById("share-code").value = "";
+    document.getElementById("import-code").value = "";
+  });
+  document.getElementById("btn-close-share").addEventListener("click", () => {
+    document.getElementById("share-modal").classList.add("hidden");
+  });
   document.getElementById("btn-time-toggle").addEventListener("click", () => {
     dayCyclePaused = !dayCyclePaused;
     updateTimeWidget();
   });
 
   document.getElementById("btn-export").addEventListener("click", () => {
-    const code = exportCode();
-    document.getElementById("share-code").value = code;
-    setStatus("✨ Código generado — cópialo y compártelo");
+    document.getElementById("share-code").value = exportCode();
+    setStatus("✨ Código generado");
   });
 
   document.getElementById("btn-copy").addEventListener("click", async () => {
     const el = document.getElementById("share-code");
-    if (!el.value) {
-      el.value = exportCode();
-    }
+    if (!el.value) el.value = exportCode();
     try {
       await navigator.clipboard.writeText(el.value);
-      setStatus("📋 Código copiado al portapapeles");
+      setStatus("📋 Copiado");
     } catch {
       el.select();
       document.execCommand("copy");
-      setStatus("📋 Código copiado");
     }
   });
 
   document.getElementById("btn-import").addEventListener("click", () => {
     const code = document.getElementById("import-code").value.trim();
-    if (!code) {
-      setStatus("Pega un código primero");
-      return;
-    }
+    if (!code) return setStatus("Pega un código primero");
     try {
       importCode(code);
-      closeShareModal();
+      document.getElementById("share-modal").classList.add("hidden");
       saveWorld();
-      setStatus("📥 Mundo cargado desde el código");
+      setStatus("📥 Mundo 3D cargado");
     } catch {
-      setStatus("❌ Código no válido — revísalo e inténtalo otra vez");
+      setStatus("❌ Código no válido");
     }
   });
 
   document.getElementById("share-modal").addEventListener("click", (e) => {
-    if (e.target.id === "share-modal") closeShareModal();
+    if (e.target.id === "share-modal") document.getElementById("share-modal").classList.add("hidden");
   });
+
+  window.addEventListener("resize", resize);
+}
+
+function seedDefaultWorld() {
+  for (let y = 8; y < 17; y++) {
+    for (let x = 10; x < 30; x++) terrain[y][x] = "grass";
+  }
+  terrain[12][8] = "water";
+  terrain[12][9] = "water";
+  terrain[13][8] = "water";
+  terrain[14][9] = "water";
+  objects[10][15] = "tree";
+  objects[10][20] = "house";
+  objects[12][25] = "flower";
+  objects[14][18] = "castle";
+  objects[11][22] = "campfire";
+  objects[16][12] = "fountain";
+  animals[13][14] = "bunny";
+  animals[9][18] = "dog";
+  animals[12][8] = "fish";
+  animals[15][24] = "unicorn";
+  rebuildWorld();
 }
 
 function startGame() {
+  if (started) return;
+  started = true;
+
   document.getElementById("welcome").classList.add("hidden");
   document.querySelector(".game-area").classList.remove("hidden");
   document.getElementById("status-bar").classList.remove("hidden");
   document.getElementById("time-widget").classList.remove("hidden");
   document.getElementById("btn-share").classList.remove("hidden");
 
-  if (!loadWorld()) {
-    for (let y = 8; y < 17; y++) {
-      for (let x = 10; x < 30; x++) terrain[y][x] = "grass";
-    }
-    terrain[12][8] = "water";
-    terrain[12][9] = "water";
-    terrain[13][8] = "water";
-    objects[10][15] = "tree";
-    objects[10][20] = "house";
-    objects[12][25] = "flower";
-    objects[14][18] = "castle";
-    objects[11][22] = "campfire";
-    animals[13][14] = "bunny";
-    animals[9][18] = "dog";
-    animals[12][8] = "fish";
-    animals[15][24] = "unicorn";
-  }
+  if (!loadWorld()) seedDefaultWorld();
 
+  camera.position.set(16, 18, 18);
+  controls.target.set(0, 0, 0);
+  resize();
   refreshPalettes();
   bindInput();
   updateTimeWidget();
+  updateLighting();
   setMode("build");
-  loop();
+  animate();
 }
 
 document.getElementById("btn-start").addEventListener("click", startGame);

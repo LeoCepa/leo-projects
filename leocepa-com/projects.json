@@ -98,7 +98,7 @@
     "id": "creaventure",
     "title": "Creaventure",
     "emoji": "🌍",
-    "description": "¡Crea tu mundo como quieras! Animales, día/noche y códigos para compartir.",
+    "description": "Mundo 3D realista: construye, explora, animales y comparte códigos.",
     "path": "creaventure/index.html",
     "tags": ["aventura", "divertido"],
     "mobileFullscreen": true,
