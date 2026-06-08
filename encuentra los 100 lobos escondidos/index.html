@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="robots" content="noindex">
+  <title>100 Lobos Escondidos — LeoCepa.com</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="gate" class="gate hidden">
+    <div class="gate-card">
+      <span class="gate-emoji">🐺</span>
+      <h1>Solo en LeoCepa.com</h1>
+      <p>Este juego solo se puede jugar desde <strong>leocepa.com</strong>.</p>
+      <a class="gate-link" href="https://leocepa.com">Ir a LeoCepa.com</a>
+    </div>
+  </div>
+
+  <div id="app" class="app hidden">
+    <header class="hud">
+      <a class="back" href="../leocepa-com/index.html" title="Volver">←</a>
+      <div class="hud-center">
+        <h1>100 Lobos Escondidos</h1>
+        <p class="hud-count"><span id="found-count">0</span> / 100</p>
+      </div>
+      <button type="button" class="hud-btn" id="btn-reset" title="Empezar de cero">↺</button>
+    </header>
+
+    <div class="scene-wrap" id="scene-wrap">
+      <div class="scene" id="scene">
+        <canvas id="scene-canvas" aria-label="Escena con lobos escondidos"></canvas>
+        <div id="markers" class="markers" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button type="button" class="ctrl-btn" id="btn-zoom-out" aria-label="Alejar">−</button>
+      <button type="button" class="ctrl-btn" id="btn-zoom-in" aria-label="Acercar">+</button>
+      <span class="zoom-label" id="zoom-label">100%</span>
+    </div>
+
+    <p class="hint">Toca o haz clic en los lobos · Arrastra para mover · Usa +/− para zoom</p>
+
+    <div id="toast" class="toast hidden" role="status"></div>
+
+    <div id="victory" class="overlay hidden">
+      <div class="overlay-card">
+        <span class="victory-emoji">🎉🐺</span>
+        <h2>¡Los encontraste a todos!</h2>
+        <p>Has descubierto los 100 lobos escondidos en el bosque.</p>
+        <button type="button" class="primary-btn" id="btn-play-again">Jugar otra vez</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="game.js" type="module"></script>
+</body>
+</html>

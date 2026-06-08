@@ -64,5 +64,12 @@
     "description": "¡Próximamente! Nueva aventura del zorro.",
     "tags": ["pronto"],
     "status": "soon"
+  },
+  "encuentra los 100 lobos escondidos": {
+    "title": "100 Lobos Escondidos",
+    "emoji": "🐺",
+    "description": "Encuentra 100 lobos camuflados en el bosque. ¡Muy difícil!",
+    "tags": ["divertido"],
+    "mobileFullscreen": true
   }
 }

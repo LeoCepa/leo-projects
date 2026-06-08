@@ -105,6 +105,16 @@
     "status": "ready"
   },
   {
+    "id": "encuentra los 100 lobos escondidos",
+    "title": "100 Lobos Escondidos",
+    "emoji": "🐺",
+    "description": "Encuentra 100 lobos camuflados en el bosque. ¡Muy difícil!",
+    "path": "encuentra los 100 lobos escondidos/index.html",
+    "tags": ["divertido"],
+    "mobileFullscreen": true,
+    "status": "ready"
+  },
+  {
     "id": "zorro",
     "title": "Zorro",
     "emoji": "🦊",
