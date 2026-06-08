@@ -52,12 +52,20 @@
 
     <main class="game-area hidden">
       <aside class="toolbar" id="toolbar">
-        <p class="toolbar-title">Terreno</p>
-        <div class="palette" id="terrain-palette"></div>
-        <p class="toolbar-title">Objetos</p>
-        <div class="palette" id="object-palette"></div>
-        <p class="toolbar-title">Animales</p>
-        <div class="palette" id="animal-palette"></div>
+        <div id="terrain-block">
+          <p class="toolbar-title" id="terrain-label">Terreno</p>
+          <div class="palette" id="terrain-palette"></div>
+        </div>
+        <div id="outdoor-section">
+          <p class="toolbar-title">Objetos</p>
+          <div class="palette" id="object-palette"></div>
+          <p class="toolbar-title">Animales</p>
+          <div class="palette" id="animal-palette"></div>
+        </div>
+        <div id="furniture-section" class="hidden">
+          <p class="toolbar-title">Muebles</p>
+          <div class="palette" id="furniture-palette"></div>
+        </div>
         <p class="toolbar-title">Herramientas</p>
         <div class="palette tools" id="tool-palette"></div>
         <div class="toolbar-actions">
