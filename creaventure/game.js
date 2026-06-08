@@ -4,11 +4,17 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 const COLS = 40;
 const ROWS = 25;
 const CELL = 1;
-const SAVE_KEY = "creaventure-world-v2";
+const SAVE_KEY = "creaventure-world-v3";
 const CODE_PREFIX = "CV1:";
 const DAY_LENGTH = 4800;
 const DAY_SPEED = 0.35;
 const TERRAIN_H = 0.42;
+const INT_CELL = 0.82;
+
+const INTERIOR_CFG = {
+  house: { cols: 5, rows: 5, wallH: 1.35, label: "Casa" },
+  castle: { cols: 7, rows: 7, wallH: 1.65, label: "Castillo" },
+};
 
 const TERRAINS = {
   grass: { emoji: "🟩", label: "Hierba", color: 0x4a9e46, top: 0x62c060, walk: true, rough: 0.94 },
@@ -17,6 +23,7 @@ const TERRAINS = {
   stone: { emoji: "⬜", label: "Piedra", color: 0x7a8494, top: 0x959faf, walk: true, rough: 0.82 },
   snow: { emoji: "❄️", label: "Nieve", color: 0xdde7f0, top: 0xf4f8fc, walk: true, rough: 0.88 },
   dirt: { emoji: "🟫", label: "Tierra", color: 0x7a4f24, top: 0x94602d, walk: true, rough: 0.96 },
+  wood: { emoji: "🟤", label: "Madera", color: 0x7a4a22, top: 0x9a6230, walk: true, rough: 0.92 },
   lava: { emoji: "🟥", label: "Lava", color: 0xc62812, top: 0xff6b2b, walk: false, rough: 0.4, emissive: 0xff4400 },
 };
 
@@ -25,8 +32,8 @@ const OBJECTS = {
   pine: { emoji: "🌲", label: "Pino", block: true },
   flower: { emoji: "🌸", label: "Flor", block: false },
   rock: { emoji: "🪨", label: "Roca", block: true },
-  house: { emoji: "🏠", label: "Casa", block: true },
-  castle: { emoji: "🏰", label: "Castillo", block: true },
+  house: { emoji: "🏠", label: "Casa", block: false, enterable: true, interior: "house" },
+  castle: { emoji: "🏰", label: "Castillo", block: false, enterable: true, interior: "castle" },
   mushroom: { emoji: "🍄", label: "Seta", block: false },
   star: { emoji: "⭐", label: "Estrella", block: false },
   cloud: { emoji: "☁️", label: "Nube", block: false },
@@ -73,6 +80,11 @@ const terrain = Array.from({ length: ROWS }, () => Array(COLS).fill("grass"));
 const objects = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 const animals = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
 const cellMeshes = Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+const houseInteriors = {};
+
+const locationState = { kind: "world", wx: 0, wy: 0, type: null };
+const interiorExplorer = { x: 2, y: 2, wx: 0, wz: 0, facing: 1, anim: 0 };
+let interiorCellMeshes = [];
 
 const explorer = { x: 20, y: 12, wx: 0, wz: 0, facing: 1, anim: 0 };
 const keys = {};
@@ -122,6 +134,20 @@ scene.add(moon);
 const worldGroup = new THREE.Group();
 scene.add(worldGroup);
 
+const interiorGroup = new THREE.Group();
+interiorGroup.visible = false;
+scene.add(interiorGroup);
+
+const interiorRoom = new THREE.Group();
+interiorGroup.add(interiorRoom);
+
+const interiorFloorGroup = new THREE.Group();
+interiorRoom.add(interiorFloorGroup);
+
+const interiorLight = new THREE.PointLight(0xffe8c8, 1.1, 18);
+interiorLight.position.set(0, 2.2, 0);
+interiorGroup.add(interiorLight);
+
 const explorerGroup = new THREE.Group();
 scene.add(explorerGroup);
 
@@ -133,6 +159,16 @@ highlight.visible = false;
 highlight.position.y = TERRAIN_H + 0.04;
 scene.add(highlight);
 
+const interiorHighlight = new THREE.Mesh(
+  new THREE.BoxGeometry(INT_CELL * 0.92, 0.05, INT_CELL * 0.92),
+  new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.5 })
+);
+interiorHighlight.visible = false;
+interiorHighlight.position.y = 0.06;
+interiorRoom.add(interiorHighlight);
+
+const interiorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
@@ -143,6 +179,61 @@ const waterMeshes = [];
 function mat(key, opts) {
   if (!matCache.has(key)) matCache.set(key, new THREE.MeshStandardMaterial(opts));
   return matCache.get(key);
+}
+
+function interiorKey(gx, gy) {
+  return `${gx},${gy}`;
+}
+
+function isEnterableObject(type) {
+  return type === "house" || type === "castle";
+}
+
+function getInteriorData(gx, gy, type = null) {
+  const key = interiorKey(gx, gy);
+  if (!houseInteriors[key]) {
+    const objType = type || objects[gy]?.[gx];
+    const cfg = INTERIOR_CFG[objType === "castle" ? "castle" : "house"];
+    houseInteriors[key] = {
+      type: objType === "castle" ? "castle" : "house",
+      cols: cfg.cols,
+      rows: cfg.rows,
+      terrain: Array.from({ length: cfg.rows }, () => Array(cfg.cols).fill("wood")),
+      objects: Array.from({ length: cfg.rows }, () => Array(cfg.cols).fill(null)),
+      animals: Array.from({ length: cfg.rows }, () => Array(cfg.cols).fill(null)),
+    };
+  }
+  return houseInteriors[key];
+}
+
+function isInsideInterior() {
+  return locationState.kind === "interior";
+}
+
+function activeInterior() {
+  if (!isInsideInterior()) return null;
+  return getInteriorData(locationState.wx, locationState.wy, locationState.type);
+}
+
+function interiorLocal(ix, iy, cols, rows) {
+  return {
+    x: ix * INT_CELL - (cols * INT_CELL) / 2 + INT_CELL / 2,
+    z: iy * INT_CELL - (rows * INT_CELL) / 2 + INT_CELL / 2,
+  };
+}
+
+function interiorFromWorld(wx, wz, cols, rows) {
+  const ix = Math.floor((wx + (cols * INT_CELL) / 2 - INT_CELL / 2) / INT_CELL);
+  const iy = Math.floor((wz + (rows * INT_CELL) / 2 - INT_CELL / 2) / INT_CELL);
+  return { x: ix, y: iy };
+}
+
+function inInteriorGrid(x, y, data) {
+  return x >= 0 && y >= 0 && x < data.cols && y < data.rows;
+}
+
+function isInteriorDoor(data, ix, iy) {
+  return iy === data.rows - 1 && ix === Math.floor(data.cols / 2);
 }
 
 function gridToWorld(gx, gy) {
@@ -268,15 +359,202 @@ function buildHouse(large = false) {
   const g = new THREE.Group();
   const w = large ? 0.82 : 0.62;
   const h = large ? 0.72 : 0.52;
-  addMesh(g, new THREE.BoxGeometry(w, h, w), mat("wall", { color: large ? 0xb8bec8 : 0xf1e7d0, roughness: 0.86 }), 0, h / 2 + TERRAIN_H, 0);
+  const wallMat = mat(large ? "castwall" : "housewall", { color: large ? 0xb8bec8 : 0xf1e7d0, roughness: 0.86 });
+  const depth = w;
+  const wallT = 0.08;
+  const doorW = 0.22;
+
+  addMesh(g, new THREE.BoxGeometry(w, h, wallT), wallMat, 0, h / 2 + TERRAIN_H, depth / 2 - wallT / 2);
+  addMesh(g, new THREE.BoxGeometry(w, h, wallT), wallMat, 0, h / 2 + TERRAIN_H, -depth / 2 + wallT / 2);
+  addMesh(g, new THREE.BoxGeometry(wallT, h, depth), wallMat, -w / 2 + wallT / 2, h / 2 + TERRAIN_H, 0);
+  addMesh(g, new THREE.BoxGeometry(wallT, h, depth), wallMat, w / 2 - wallT / 2, h / 2 + TERRAIN_H, 0);
+
+  const sideSeg = (depth - doorW) / 2;
+  addMesh(g, new THREE.BoxGeometry(doorW + 0.04, h * 0.82, wallT), wallMat, 0, h / 2 + TERRAIN_H, depth / 2 - wallT / 2 - 0.01, 1, 1, 1, false);
+  addMesh(g, new THREE.BoxGeometry(wallT, h, sideSeg), wallMat, -doorW / 2 - sideSeg / 2, h / 2 + TERRAIN_H, depth / 2 - sideSeg / 2);
+  addMesh(g, new THREE.BoxGeometry(wallT, h, sideSeg), wallMat, doorW / 2 + sideSeg / 2, h / 2 + TERRAIN_H, depth / 2 - sideSeg / 2);
+
   addMesh(g, new THREE.ConeGeometry(w * 0.72, 0.38, 4), mat("roof", { color: large ? 0x5c4a72 : 0xc0392b, roughness: 0.78 }), 0, h + TERRAIN_H + 0.16, 0, 1, 1, 1);
+  addMesh(g, new THREE.BoxGeometry(0.16, 0.24, 0.05), mat("door", { color: 0x4a3728, roughness: 0.9 }), 0, TERRAIN_H + 0.14, depth / 2 + 0.03, 1, 1, 1, false);
+
   if (large) {
     addMesh(g, new THREE.CylinderGeometry(0.12, 0.14, 0.55, 6), mat("tower", { color: 0x9099a8, roughness: 0.8 }), 0.28, 0.92, 0.28);
     addMesh(g, new THREE.CylinderGeometry(0.12, 0.14, 0.55, 6), mat("tower2", { color: 0x9099a8, roughness: 0.8 }), -0.28, 0.92, -0.28);
-  } else {
-    addMesh(g, new THREE.BoxGeometry(0.14, 0.22, 0.04), mat("door", { color: 0x4a3728, roughness: 0.9 }), 0, TERRAIN_H + 0.12, w / 2 + 0.02);
   }
+
+  g.userData.enterable = true;
   return g;
+}
+
+function buildInteriorShell(data) {
+  const g = new THREE.Group();
+  const cfg = INTERIOR_CFG[data.type] || INTERIOR_CFG.house;
+  const cols = data.cols;
+  const rows = data.rows;
+  const wallH = cfg.wallH;
+  const type = data.type;
+  const roomW = cols * INT_CELL;
+  const roomD = rows * INT_CELL;
+  const wallT = 0.1;
+  const wallMat = mat(`inwall-${type}`, { color: type === "castle" ? 0xc8cdd6 : 0xf5ecd7, roughness: 0.88 });
+  const floorMat = mat("inbase", { color: 0x5c4033, roughness: 0.95 });
+
+  addMesh(g, new THREE.BoxGeometry(roomW + wallT * 2, 0.08, roomD + wallT * 2), floorMat, 0, 0.04, 0, 1, 1, 1, false);
+  addMesh(g, new THREE.BoxGeometry(roomW + wallT * 2, wallH, wallT), wallMat, 0, wallH / 2, -(roomD / 2 + wallT / 2));
+  addMesh(g, new THREE.BoxGeometry(roomW + wallT * 2, wallH, wallT), wallMat, 0, wallH / 2, roomD / 2 + wallT / 2);
+  addMesh(g, new THREE.BoxGeometry(wallT, wallH, roomD), wallMat, -(roomW / 2 + wallT / 2), wallH / 2, 0);
+  addMesh(g, new THREE.BoxGeometry(wallT, wallH, roomD), wallMat, roomW / 2 + wallT / 2, wallH / 2, 0);
+
+  const doorIx = Math.floor(cols / 2);
+  const doorX = interiorLocal(doorIx, rows - 1, cols, rows).x;
+  const doorW = INT_CELL * 0.75;
+  addMesh(g, new THREE.BoxGeometry(doorW, wallH * 0.85, wallT * 1.2), mat("indoor", { color: 0x3d2817, roughness: 0.9 }), doorX, wallH * 0.42, roomD / 2 + wallT / 2 + 0.02, 1, 1, 1, false);
+
+  addMesh(g, new THREE.BoxGeometry(roomW + wallT * 2, 0.08, roomD + wallT * 2), mat("inceil", { color: 0x2a2118, roughness: 0.95 }), 0, wallH, 0, 1, 1, 1, false);
+
+  if (type === "castle") {
+    for (let i = 0; i < 4; i++) {
+      const px = (i % 2 ? 1 : -1) * (roomW / 2 - 0.2);
+      const pz = (i < 2 ? 1 : -1) * (roomD / 2 - 0.2);
+      const lamp = new THREE.PointLight(0xffd699, 0.35, 5);
+      lamp.position.set(px, wallH - 0.15, pz);
+      g.add(lamp);
+    }
+  }
+
+  return g;
+}
+
+function rebuildInteriorCell(ix, iy) {
+  const data = activeInterior();
+  if (!data) return;
+
+  if (interiorCellMeshes[iy]?.[ix]) {
+    interiorFloorGroup.remove(interiorCellMeshes[iy][ix]);
+    disposeObject(interiorCellMeshes[iy][ix]);
+  }
+
+  const group = new THREE.Group();
+  const { x, z } = interiorLocal(ix, iy, data.cols, data.rows);
+  group.position.set(x, 0, z);
+
+  const t = data.terrain[iy][ix];
+  const floor = buildTerrainMesh(t);
+  floor.scale.set(INT_CELL / CELL, 1, INT_CELL / CELL);
+  floor.position.y = 0;
+  group.add(floor);
+
+  if (data.objects[iy][ix]) {
+    const prop = buildProp(data.objects[iy][ix]);
+    prop.scale.set(0.75, 0.75, 0.75);
+    group.add(prop);
+  }
+  if (data.animals[iy][ix]) {
+    const ani = buildAnimal(data.animals[iy][ix]);
+    ani.scale.set(0.7, 0.7, 0.7);
+    ani.userData.animalType = data.animals[iy][ix];
+    group.add(ani);
+  }
+
+  if (isInteriorDoor(data, ix, iy)) {
+    addMesh(group, new THREE.BoxGeometry(INT_CELL * 0.5, 0.03, INT_CELL * 0.35), mat("doormat", { color: 0x8b4513, roughness: 0.95 }), 0, 0.08, INT_CELL * 0.18, 1, 1, 1, false);
+  }
+
+  interiorFloorGroup.add(group);
+  if (!interiorCellMeshes[iy]) interiorCellMeshes[iy] = [];
+  interiorCellMeshes[iy][ix] = group;
+}
+
+function rebuildInteriorView() {
+  const data = activeInterior();
+  if (!data) return;
+
+  [...interiorRoom.children].forEach((child) => {
+    if (child !== interiorFloorGroup && child !== interiorHighlight) {
+      interiorRoom.remove(child);
+      disposeObject(child);
+    }
+  });
+
+  interiorRoom.add(buildInteriorShell(data));
+
+  interiorCellMeshes = Array.from({ length: data.rows }, () => []);
+  interiorFloorGroup.clear();
+  for (let y = 0; y < data.rows; y++) {
+    for (let x = 0; x < data.cols; x++) rebuildInteriorCell(x, y);
+  }
+  syncInteriorExplorerVisual();
+}
+
+function enterInterior(gx, gy, type = null) {
+  const objType = type || objects[gy]?.[gx];
+  if (!isEnterableObject(objType)) return;
+
+  locationState.kind = "interior";
+  locationState.wx = gx;
+  locationState.wy = gy;
+  locationState.type = objType;
+
+  getInteriorData(gx, gy, objType);
+  interiorExplorer.x = Math.floor(getInteriorData(gx, gy).cols / 2);
+  interiorExplorer.y = getInteriorData(gx, gy).rows - 2;
+  interiorExplorer.facing = 0;
+
+  worldGroup.visible = false;
+  explorerGroup.visible = mode === "explore";
+  interiorGroup.visible = true;
+  scene.fog.near = 8;
+  scene.fog.far = 24;
+
+  rebuildInteriorView();
+
+  camera.position.set(0, 5.5, 6.5);
+  controls.target.set(0, 0.8, 0);
+  controls.enabled = mode === "build";
+  controls.minDistance = 3;
+  controls.maxDistance = 12;
+  controls.maxPolarAngle = Math.PI / 2.05;
+  controls.update();
+
+  document.getElementById("btn-exit-interior")?.classList.remove("hidden");
+  setStatus(`Dentro de la ${INTERIOR_CFG[objType === "castle" ? "castle" : "house"].label} — construye o pulsa E en la puerta para salir`);
+}
+
+function exitInterior() {
+  if (!isInsideInterior()) return;
+
+  explorer.x = locationState.wx;
+  explorer.y = locationState.wy;
+  syncExplorerVisual();
+
+  locationState.kind = "world";
+  locationState.type = null;
+
+  worldGroup.visible = true;
+  interiorGroup.visible = false;
+  explorerGroup.visible = mode === "explore";
+  scene.fog.near = 28;
+  scene.fog.far = 72;
+
+  controls.minDistance = 8;
+  controls.maxDistance = 55;
+  controls.maxPolarAngle = Math.PI / 2.15;
+  camera.position.set(explorer.wx + 8, 14, explorer.wz + 10);
+  controls.target.set(explorer.wx, TERRAIN_H, explorer.wz);
+  controls.update();
+
+  document.getElementById("btn-exit-interior")?.classList.add("hidden");
+  setStatus(mode === "build" ? "Construye en 3D — clic en una casa para decorar dentro" : "Explora — entra en casas con E");
+}
+
+function syncInteriorExplorerVisual() {
+  const data = activeInterior();
+  if (!data) return;
+  const { x, z } = interiorLocal(interiorExplorer.x, interiorExplorer.y, data.cols, data.rows);
+  interiorExplorer.wx = x;
+  interiorExplorer.wz = z;
+  explorerGroup.position.set(x, 0, z);
+  explorerGroup.rotation.y = interiorExplorer.facing > 0 ? -0.5 : interiorExplorer.facing < 0 ? 0.5 : Math.PI;
 }
 
 function buildProp(type) {
@@ -463,11 +741,25 @@ function syncExplorerVisual() {
 }
 
 function serializeWorld() {
-  return { v: 2, terrain, objects, animals, explorer: { x: explorer.x, y: explorer.y }, dayTime };
+  return {
+    v: 3,
+    terrain,
+    objects,
+    animals,
+    interiors: houseInteriors,
+    explorer: { x: explorer.x, y: explorer.y },
+    interiorPos: isInsideInterior()
+      ? { wx: locationState.wx, wy: locationState.wy, ix: interiorExplorer.x, iy: interiorExplorer.y, inside: true }
+      : { inside: false },
+    dayTime,
+  };
 }
 
 function applyWorld(data) {
   if (!data?.terrain || !data.objects) return false;
+
+  Object.keys(houseInteriors).forEach((k) => delete houseInteriors[k]);
+
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
       terrain[y][x] = TERRAINS[data.terrain[y]?.[x]] ? data.terrain[y][x] : "grass";
@@ -477,12 +769,35 @@ function applyWorld(data) {
       animals[y][x] = ani && ANIMALS[ani] ? ani : null;
     }
   }
+
+  if (data.interiors) {
+    Object.assign(houseInteriors, data.interiors);
+  }
+
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (isEnterableObject(objects[y][x]) && !houseInteriors[interiorKey(x, y)]) {
+        getInteriorData(x, y, objects[y][x]);
+      }
+    }
+  }
+
   if (data.explorer) {
     explorer.x = data.explorer.x ?? explorer.x;
     explorer.y = data.explorer.y ?? explorer.y;
   }
   if (typeof data.dayTime === "number") dayTime = data.dayTime % DAY_LENGTH;
+
+  if (isInsideInterior()) exitInterior();
   rebuildWorld();
+
+  if (data.interiorPos?.inside && isEnterableObject(objects[data.interiorPos.wy]?.[data.interiorPos.wx])) {
+    enterInterior(data.interiorPos.wx, data.interiorPos.wy);
+    interiorExplorer.x = data.interiorPos.ix ?? interiorExplorer.x;
+    interiorExplorer.y = data.interiorPos.iy ?? interiorExplorer.y;
+    syncInteriorExplorerVisual();
+  }
+
   return true;
 }
 
@@ -574,9 +889,57 @@ function pointerToGrid(clientX, clientY) {
   mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
   mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
+
+  if (isInsideInterior()) {
+    const data = activeInterior();
+    if (!raycaster.ray.intersectPlane(interiorPlane, hitPoint)) return null;
+    const grid = interiorFromWorld(hitPoint.x, hitPoint.z, data.cols, data.rows);
+    return inInteriorGrid(grid.x, grid.y, data) ? grid : null;
+  }
+
   if (!raycaster.ray.intersectPlane(groundPlane, hitPoint)) return null;
   const grid = worldToGrid(hitPoint.x, hitPoint.z);
   return inGrid(grid.x, grid.y) ? grid : null;
+}
+
+function canPlaceInteriorObject(type, ix, iy, data) {
+  if (isInteriorDoor(data, ix, iy)) return false;
+  if (ix === 0 || iy === 0 || ix === data.cols - 1 || iy === data.rows - 1) return false;
+  return true;
+}
+
+function canPlaceInteriorAnimal(type, ix, iy, data) {
+  if (!canPlaceInteriorObject(type, ix, iy, data)) return false;
+  return true;
+}
+
+function paintInteriorAt(ix, iy) {
+  const data = activeInterior();
+  if (!data || !inInteriorGrid(ix, iy, data)) return;
+
+  if (selectedTool === "erase") {
+    data.terrain[iy][ix] = "wood";
+    data.objects[iy][ix] = null;
+    data.animals[iy][ix] = null;
+  } else if (selectedAnimal) {
+    if (canPlaceInteriorAnimal(selectedAnimal, ix, iy, data)) {
+      data.animals[iy][ix] = selectedAnimal;
+      data.objects[iy][ix] = null;
+    }
+  } else if (selectedObject) {
+    if (selectedObject === "house" || selectedObject === "castle") return;
+    if (canPlaceInteriorObject(selectedObject, ix, iy, data)) {
+      data.objects[iy][ix] = selectedObject;
+    }
+  } else if (TERRAINS[selectedTerrain]?.walk) {
+    data.terrain[iy][ix] = selectedTerrain;
+  }
+
+  rebuildInteriorCell(ix, iy);
+  const bits = [TERRAINS[data.terrain[iy][ix]].label];
+  if (data.objects[iy][ix]) bits.push(OBJECTS[data.objects[iy][ix]].label);
+  if (data.animals[iy][ix]) bits.push(ANIMALS[data.animals[iy][ix]].label);
+  setTileInfo(`Interior · ${bits.join(" · ")}`);
 }
 
 function canPlaceAnimal(type, x, y) {
@@ -597,7 +960,23 @@ function canPlaceObject(type, x, y) {
 function paintAt(x, y) {
   if (mode !== "build") return;
 
+  if (isInsideInterior()) {
+    paintInteriorAt(x, y);
+    return;
+  }
+
+  if (
+    selectedTool !== "erase"
+    && isEnterableObject(objects[y][x])
+    && !selectedObject
+    && !selectedAnimal
+  ) {
+    enterInterior(x, y);
+    return;
+  }
+
   if (selectedTool === "erase") {
+    if (isEnterableObject(objects[y][x])) delete houseInteriors[interiorKey(x, y)];
     terrain[y][x] = "grass";
     objects[y][x] = null;
     animals[y][x] = null;
@@ -607,7 +986,10 @@ function paintAt(x, y) {
       objects[y][x] = null;
     }
   } else if (selectedObject) {
-    if (canPlaceObject(selectedObject, x, y)) objects[y][x] = selectedObject;
+    if (canPlaceObject(selectedObject, x, y)) {
+      objects[y][x] = selectedObject;
+      if (isEnterableObject(selectedObject)) getInteriorData(x, y, selectedObject);
+    }
   } else {
     terrain[y][x] = selectedTerrain;
     if (selectedTerrain === "water" || selectedTerrain === "lava") animals[y][x] = null;
@@ -630,6 +1012,8 @@ function findSpawn() {
 }
 
 function randomWorld() {
+  if (isInsideInterior()) exitInterior();
+  Object.keys(houseInteriors).forEach((k) => delete houseInteriors[k]);
   const terrains = Object.keys(TERRAINS);
   const objKeys = Object.keys(OBJECTS).filter((k) => k !== "boat");
   const aniKeys = Object.keys(ANIMALS);
@@ -647,7 +1031,10 @@ function randomWorld() {
     const x = 3 + Math.floor(Math.random() * (COLS - 6));
     const y = 3 + Math.floor(Math.random() * (ROWS - 6));
     const type = objKeys[Math.floor(Math.random() * objKeys.length)];
-    if (canPlaceObject(type, x, y)) objects[y][x] = type;
+    if (canPlaceObject(type, x, y)) {
+      objects[y][x] = type;
+      if (isEnterableObject(type)) getInteriorData(x, y, type);
+    }
   }
 
   for (let i = 0; i < 18; i++) {
@@ -665,6 +1052,8 @@ function randomWorld() {
 }
 
 function clearWorld() {
+  if (isInsideInterior()) exitInterior();
+  Object.keys(houseInteriors).forEach((k) => delete houseInteriors[k]);
   for (let y = 0; y < ROWS; y++) {
     for (let x = 0; x < COLS; x++) {
       terrain[y][x] = "grass";
@@ -760,7 +1149,56 @@ function updateAnimals() {
   }
 }
 
+function canWalkInteriorTile(ix, iy, data) {
+  if (!inInteriorGrid(ix, iy, data)) return false;
+  if (ix === 0 || iy === 0 || ix === data.cols - 1 || iy === data.rows - 1) {
+    return isInteriorDoor(data, ix, iy);
+  }
+  const obj = data.objects[iy][ix];
+  if (obj && OBJECTS[obj]?.block) return false;
+  return TERRAINS[data.terrain[iy][ix]]?.walk !== false;
+}
+
+function tryMoveInterior(dx, dy) {
+  const data = activeInterior();
+  if (!data) return;
+  const nx = interiorExplorer.x + dx;
+  const ny = interiorExplorer.y + dy;
+  if (!canWalkInteriorTile(nx, ny, data)) return;
+  interiorExplorer.x = nx;
+  interiorExplorer.y = ny;
+  if (dx !== 0) interiorExplorer.facing = dx;
+  interiorExplorer.anim++;
+}
+
+function handleInteract() {
+  if (isInsideInterior()) {
+    const data = activeInterior();
+    if (isInteriorDoor(data, interiorExplorer.x, interiorExplorer.y)) exitInterior();
+    return;
+  }
+
+  if (isEnterableObject(objects[explorer.y]?.[explorer.x])) {
+    enterInterior(explorer.x, explorer.y);
+    return;
+  }
+
+  for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    const nx = explorer.x + dx;
+    const ny = explorer.y + dy;
+    if (inGrid(nx, ny) && isEnterableObject(objects[ny][nx])) {
+      enterInterior(nx, ny);
+      return;
+    }
+  }
+}
+
 function tryMove(dx, dy) {
+  if (isInsideInterior()) {
+    tryMoveInterior(dx, dy);
+    return;
+  }
+
   const nx = explorer.x + dx;
   const ny = explorer.y + dy;
   if (isBlocked(nx, ny)) return;
@@ -782,6 +1220,23 @@ function updateExplore() {
     else dx = 0;
   }
   if (dx || dy) tryMove(dx, dy);
+
+  if (isInsideInterior()) {
+    const data = activeInterior();
+    const target = interiorLocal(interiorExplorer.x, interiorExplorer.y, data.cols, data.rows);
+    interiorExplorer.wx += (target.x - interiorExplorer.wx) * 0.22;
+    interiorExplorer.wz += (target.z - interiorExplorer.wz) * 0.22;
+    explorerGroup.position.set(interiorExplorer.wx, 0, interiorExplorer.wz);
+    explorerGroup.rotation.y = interiorExplorer.facing > 0 ? -0.5 : interiorExplorer.facing < 0 ? 0.5 : Math.PI;
+    explorerMesh.position.y = Math.sin(interiorExplorer.anim * 0.35) * 0.03;
+
+    const camTarget = new THREE.Vector3(interiorExplorer.wx, 0.85, interiorExplorer.wz);
+    const camPos = new THREE.Vector3(interiorExplorer.wx, 3.6, interiorExplorer.wz + 3.4);
+    camera.position.lerp(camPos, 0.08);
+    controls.target.lerp(camTarget, 0.12);
+    return;
+  }
+
   updateAnimals();
 
   const target = gridToWorld(explorer.x, explorer.y);
@@ -822,14 +1277,20 @@ function setMode(next) {
     app.classList.add("build-mode");
     explorerGroup.visible = false;
     controls.enabled = true;
-    setStatus("Construye en 3D — clic para colocar");
+    setStatus(isInsideInterior()
+      ? "Decora el interior — clic para colocar · E en la puerta para salir"
+      : "Construye — clic en una 🏠 para entrar y decorar");
   } else {
-    if (isBlocked(explorer.x, explorer.y)) {
-      const spawn = findSpawn();
-      explorer.x = spawn.x;
-      explorer.y = spawn.y;
+    if (!isInsideInterior()) {
+      if (isBlocked(explorer.x, explorer.y)) {
+        const spawn = findSpawn();
+        explorer.x = spawn.x;
+        explorer.y = spawn.y;
+      }
+      syncExplorerVisual();
+    } else {
+      syncInteriorExplorerVisual();
     }
-    syncExplorerVisual();
     toolbar.classList.add("hidden");
     buildHint.classList.add("hidden");
     exploreHint.classList.remove("hidden");
@@ -838,23 +1299,38 @@ function setMode(next) {
     app.classList.remove("build-mode");
     explorerGroup.visible = true;
     controls.enabled = false;
-    setStatus("Explora tu mundo 3D 🐾");
+    setStatus(isInsideInterior()
+      ? "Dentro — ve a la puerta y pulsa E para salir"
+      : "Explora — pulsa E junto a una casa para entrar");
   }
 }
 
 function updateHighlight(clientX, clientY) {
   if (mode !== "build") {
     highlight.visible = false;
+    interiorHighlight.visible = false;
     return;
   }
   const cell = pointerToGrid(clientX, clientY);
   if (!cell) {
     highlight.visible = false;
+    interiorHighlight.visible = false;
     return;
   }
+
+  if (isInsideInterior()) {
+    const data = activeInterior();
+    const { x, z } = interiorLocal(cell.x, cell.y, data.cols, data.rows);
+    interiorHighlight.position.set(x, 0.06, z);
+    interiorHighlight.visible = true;
+    highlight.visible = false;
+    return;
+  }
+
   const { x, z } = gridToWorld(cell.x, cell.y);
   highlight.position.set(x, TERRAIN_H + 0.04, z);
   highlight.visible = true;
+  interiorHighlight.visible = false;
 }
 
 function resize() {
@@ -923,6 +1399,7 @@ function bindInput() {
 
   document.addEventListener("keydown", (e) => {
     keys[e.code] = true;
+    if (e.code === "KeyE") handleInteract();
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.code)) e.preventDefault();
   });
   document.addEventListener("keyup", (e) => { keys[e.code] = false; });
@@ -956,6 +1433,7 @@ function bindInput() {
     dayCyclePaused = !dayCyclePaused;
     updateTimeWidget();
   });
+  document.getElementById("btn-exit-interior").addEventListener("click", exitInterior);
 
   document.getElementById("btn-export").addEventListener("click", () => {
     document.getElementById("share-code").value = exportCode();
@@ -1004,8 +1482,10 @@ function seedDefaultWorld() {
   terrain[14][9] = "water";
   objects[10][15] = "tree";
   objects[10][20] = "house";
+  getInteriorData(10, 20, "house");
   objects[12][25] = "flower";
   objects[14][18] = "castle";
+  getInteriorData(14, 18, "castle");
   objects[11][22] = "campfire";
   objects[16][12] = "fountain";
   animals[13][14] = "bunny";
