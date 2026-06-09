@@ -79,6 +79,6 @@
     "tags": ["divertido", "serie"],
     "saga": "Los Tontillos",
     "mobileFullscreen": true,
-    "entry": "capitulo-01/index.html"
+    "entry": "index.html"
   }
 }

@@ -3,11 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="0; url=capitulo-01/">
-  <title>Los Tontillos</title>
-  <script>location.replace("capitulo-01/");</script>
+  <title>Los Tontillos — Serie de comedia</title>
+  <meta name="description" content="Los Tontillos: comedia estilo Looney Tunes.">
+  <link rel="stylesheet" href="style.css?v=20260609c2">
 </head>
 <body>
-  <p><a href="capitulo-01/">Ir al capítulo 1 →</a></p>
+  <div class="page">
+    <header class="hero">
+      <span class="badge">🎬 ESTILO LOONEY TUNES</span>
+      <h1>Los Tontillos</h1>
+      <p class="tagline">
+        Comedia muy graciosa donde unos personajes absurdos hablan solos
+        en el parque comiendo chuches.
+      </p>
+    </header>
+
+    <h2 class="chapters-title">📺 Capítulos</h2>
+    <ul class="chapter-list" id="chapter-list">
+      <li>Cargando capítulos…</li>
+    </ul>
+
+    <h2 class="chapters-title">🎭 Personajes</h2>
+    <div class="cast-grid" id="cast-grid"></div>
+
+    <footer class="footer">
+      <p>Hecho por Leo · <a href="https://leocepa.com">LeoCepa.com</a></p>
+    </footer>
+  </div>
+
+  <script src="characters.js?v=20260609c2"></script>
+  <script>
+    const castIds = ["pavo", "gato", "cerdo", "rana", "topo", "palomo"];
+    const castGrid = document.getElementById("cast-grid");
+    castIds.forEach((id) => {
+      const card = document.createElement("div");
+      card.className = "cast-card";
+      const c = document.createElement("canvas");
+      c.width = 160;
+      c.height = 160;
+      const cx = c.getContext("2d");
+      cx.translate(80, 115);
+      drawCharacter(cx, id, 130, performance.now() / 1000, { talking: false });
+      const label = document.createElement("p");
+      label.textContent = CHARACTER_NAMES[id];
+      card.appendChild(c);
+      card.appendChild(label);
+      castGrid.appendChild(card);
+    });
+
+    fetch("chapters.json?v=20260609c2")
+      .then((r) => r.json())
+      .then((chapters) => {
+        const list = document.getElementById("chapter-list");
+        list.innerHTML = chapters
+          .map(
+            (c) => `
+          <li>
+            <a class="chapter-card" href="${c.path}">
+              <div class="num">Capítulo ${c.num}</div>
+              <div class="title">${c.title}</div>
+              ${c.hook ? `<div class="hook">«${c.hook}»</div>` : ""}
+            </a>
+          </li>`
+          )
+          .join("");
+      })
+      .catch(() => {
+        document.getElementById("chapter-list").innerHTML =
+          "<li>No pude cargar los capítulos.</li>";
+      });
+  </script>
 </body>
 </html>

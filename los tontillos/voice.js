@@ -5,6 +5,7 @@ const VOICE_PROFILE = {
   cerdo: { pitch: 1.55, rate: 1.35 },
   rana: { pitch: 0.95, rate: 1.05 },
   palomo: { pitch: 1.05, rate: 0.92 },
+  topo: { pitch: 1.2, rate: 1.15 },
   all: { pitch: 1.45, rate: 1.25 },
 };
 
@@ -24,7 +25,7 @@ if ("speechSynthesis" in window) {
 
 function pickVoice(speaker) {
   if (!spanishVoices.length) return null;
-  const idx = { pavo: 0, gato: 1, cerdo: 2, rana: 0, palomo: 1, all: 2 };
+  const idx = { pavo: 0, gato: 1, cerdo: 2, rana: 0, palomo: 1, topo: 2, all: 2 };
   const i = idx[speaker] ?? 0;
   return spanishVoices[i % spanishVoices.length];
 }

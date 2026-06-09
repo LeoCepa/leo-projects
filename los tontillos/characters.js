@@ -500,12 +500,85 @@ function drawPalomoCartero(ctx, s, t, talking) {
   ctx.restore();
 }
 
+/** Topo cegato — topo con gafas enormes, sale del suelo */
+function drawTopoCegato(ctx, s, t, talking) {
+  ctx.save();
+  ctx.translate(0, talking ? Math.sin(t * 13) * s * 0.02 : Math.sin(t * 2) * s * 0.008);
+  if (talking) squashStretch(ctx, s, t, true);
+  ltShadow(ctx, s, 0.38);
+
+  // Agujero
+  ctx.fillStyle = "#3e2723";
+  ctx.beginPath();
+  ctx.ellipse(0, s * 0.38, s * 0.32, s * 0.08, 0, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Cuerpo marrón redondo
+  ctx.fillStyle = "#8d6e63";
+  ctx.beginPath();
+  ctx.ellipse(0, s * 0.12, s * 0.26, s * 0.22, 0, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Cabeza
+  ctx.beginPath();
+  ctx.arc(0, -s * 0.18, s * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Nariz rosa
+  ctx.fillStyle = "#ff8fab";
+  ctx.beginPath();
+  ctx.ellipse(0, -s * 0.1, s * 0.09, s * 0.07, 0, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Gafas enormes (no ve)
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.beginPath();
+  ctx.arc(-s * 0.1, -s * 0.2, s * 0.11, 0, Math.PI * 2);
+  ctx.arc(s * 0.1, -s * 0.2, s * 0.11, 0, Math.PI * 2);
+  ctx.fill();
+  ink(ctx, s, Math.max(4, s * 0.11));
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.01, -s * 0.2);
+  ctx.lineTo(s * 0.01, -s * 0.2);
+  ctx.stroke();
+  // Espirales en gafas = cegato
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(2, s * 0.05);
+  [[-0.1, -0.2], [0.1, -0.2]].forEach(([ex, ey]) => {
+    ctx.beginPath();
+    for (let i = 0; i < 12; i++) {
+      const a = i * 0.8;
+      const r = s * 0.008 * i;
+      ctx.lineTo(s * ex + Math.cos(a) * r, s * ey + Math.sin(a) * r);
+    }
+    ctx.stroke();
+  });
+
+  // Manitas con garras
+  ctx.fillStyle = "#a1887f";
+  [[-0.22, 0.08], [0.22, 0.08]].forEach(([ex, ey]) => {
+    ctx.beginPath();
+    ctx.ellipse(s * ex, s * ey, s * 0.07, s * 0.05, 0, 0, Math.PI * 2);
+    ctx.fill();
+    fillStroke(ctx, s);
+  });
+
+  ltMouth(ctx, s, t, talking, -s * 0.02, true);
+  ctx.restore();
+}
+
 const DRAWERS = {
   pavo: drawPavoMarilondo,
   gato: drawGatoEstrella,
   cerdo: drawCerdoTrueno,
   rana: drawRanaPantalon,
   palomo: drawPalomoCartero,
+  topo: drawTopoCegato,
 };
 
 const CHARACTER_NAMES = {
@@ -514,6 +587,7 @@ const CHARACTER_NAMES = {
   cerdo: "Cerdo trueno",
   rana: "Rana pantalón",
   palomo: "Palomo cartero",
+  topo: "Topo cegato",
 };
 
 function drawCharacter(ctx, id, s, t, opts = {}) {

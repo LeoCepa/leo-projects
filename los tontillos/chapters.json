@@ -4,5 +4,11 @@
     "title": "Nos conocimos en el parque comiendo chuches",
     "path": "capitulo-01/index.html",
     "hook": "Yo, el pavo marilondo, me conocí con gato estrella en el parque comiendo chuches."
+  },
+  {
+    "num": 2,
+    "title": "El parque cobra el impuesto de chuches",
+    "path": "capitulo-02/index.html",
+    "hook": "Yo, el topo cegato, me conocí con ellos porque olía a chuches desde el sótano."
   }
 ]
