@@ -78,6 +78,7 @@
     "description": "Serie de comedia muy graciosa con estilo Warner.",
     "tags": ["divertido", "serie"],
     "saga": "Los Tontillos",
-    "mobileFullscreen": true
+    "mobileFullscreen": true,
+    "entry": "capitulo-01/index.html"
   }
 }

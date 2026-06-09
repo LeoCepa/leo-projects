@@ -119,7 +119,7 @@
     "title": "Los Tontillos",
     "emoji": "🎬",
     "description": "Serie de comedia muy graciosa con estilo Warner.",
-    "path": "los tontillos/index.html",
+    "path": "los tontillos/capitulo-01/index.html",
     "tags": ["divertido", "serie"],
     "saga": "Los Tontillos",
     "mobileFullscreen": true,
