@@ -1,4 +1,4 @@
-/** Estilo dibujo animado — Cosas Locas */
+/** Estilo dibujo animado */
 const CARTOON_INK = "#1a1a2e";
 
 function cartoonLine(ctx, s) {

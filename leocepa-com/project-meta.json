@@ -68,28 +68,8 @@
   "encuentra los 100 lobos escondidos": {
     "title": "100 Lobos Escondidos",
     "emoji": "🐺",
-    "description": "Cosas Locas #1 — Dibujo animado: encuentra 100 lobos en el bosque.",
-    "tags": ["divertido", "saga"],
-    "saga": "Cosas Locas",
-    "sagaEpisode": 1,
+    "description": "Encuentra 100 lobos escondidos en el bosque.",
+    "tags": ["divertido"],
     "mobileFullscreen": true
-  },
-  "atrapa-lo-loco": {
-    "title": "Atrapa lo Loco",
-    "emoji": "🎪",
-    "description": "Cosas Locas #2 — Dibujo animado: atrapa personajes locos a toda prisa.",
-    "tags": ["divertido", "saga"],
-    "saga": "Cosas Locas",
-    "sagaEpisode": 2,
-    "mobileFullscreen": true
-  },
-  "cosas-locas-3": {
-    "title": "Cosas Locas #3",
-    "emoji": "🔮",
-    "description": "¡Próximamente! Cosas Locas #3 en dibujo animado.",
-    "tags": ["pronto", "saga"],
-    "saga": "Cosas Locas",
-    "sagaEpisode": 3,
-    "status": "soon"
   }
 }
