@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Los Tontillos — Serie de comedia</title>
+  <meta name="description" content="Los Tontillos: comedia muy graciosa con un poco de estilo Warner.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <span class="badge">🎬 ESTILO WARNER</span>
+      <h1>Los Tontillos</h1>
+      <p class="tagline">
+        Una serie de comedia muy graciosa donde unos personajes absurdos
+        se presentan como si fuera lo más normal del mundo.
+      </p>
+    </header>
+
+    <h2 class="chapters-title">📺 Capítulos</h2>
+    <ul class="chapter-list" id="chapter-list">
+      <li>Cargando capítulos…</li>
+    </ul>
+
+    <footer class="footer">
+      <p>Hecho por Leo · <a href="https://leocepa.com">LeoCepa.com</a></p>
+    </footer>
+  </div>
+
+  <script>
+    fetch("chapters.json")
+      .then((r) => r.json())
+      .then((chapters) => {
+        const list = document.getElementById("chapter-list");
+        list.innerHTML = chapters
+          .map(
+            (c) => `
+          <li>
+            <a class="chapter-card" href="${c.path}">
+              <div class="num">Capítulo ${c.num}</div>
+              <div class="title">${c.title}</div>
+              ${c.hook ? `<div class="hook">«${c.hook}»</div>` : ""}
+            </a>
+          </li>`
+          )
+          .join("");
+      })
+      .catch(() => {
+        document.getElementById("chapter-list").innerHTML =
+          "<li>No pude cargar los capítulos.</li>";
+      });
+  </script>
+</body>
+</html>
