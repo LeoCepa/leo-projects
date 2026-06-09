@@ -108,11 +108,36 @@
     "id": "encuentra los 100 lobos escondidos",
     "title": "100 Lobos Escondidos",
     "emoji": "🐺",
-    "description": "Encuentra 100 lobos camuflados en el bosque. ¡Muy difícil!",
+    "description": "Cosas Locas #1 — Encuentra 100 lobos escondidos en el bosque.",
     "path": "encuentra los 100 lobos escondidos/index.html",
-    "tags": ["divertido"],
+    "tags": ["divertido", "saga"],
+    "saga": "Cosas Locas",
+    "sagaEpisode": 1,
     "mobileFullscreen": true,
     "status": "ready"
+  },
+  {
+    "id": "atrapa-lo-loco",
+    "title": "Atrapa lo Loco",
+    "emoji": "🎪",
+    "description": "Cosas Locas #2 — ¡Atrapa cosas locas antes de que desaparezcan!",
+    "path": "atrapa-lo-loco/index.html",
+    "tags": ["divertido", "saga"],
+    "saga": "Cosas Locas",
+    "sagaEpisode": 2,
+    "mobileFullscreen": true,
+    "status": "ready"
+  },
+  {
+    "id": "cosas-locas-3",
+    "title": "Cosas Locas #3",
+    "emoji": "🔮",
+    "description": "¡Próximamente! La tercera locura de la serie.",
+    "path": "cosas-locas-3/index.html",
+    "tags": ["pronto", "saga"],
+    "saga": "Cosas Locas",
+    "sagaEpisode": 3,
+    "status": "soon"
   },
   {
     "id": "zorro",

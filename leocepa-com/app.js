@@ -6,7 +6,7 @@ function repoBase() {
 
 function catalogUrl() {
   const base = SITE.self || ".";
-  return `${base}/projects.json?v=20260608b`;
+  return `${base}/projects.json?v=20260608c`;
 }
 
 function gameUrl(project) {
@@ -58,7 +58,7 @@ function renderCard(project) {
     .join("");
 
   const sagaLine = project.saga
-    ? `<span class="tag saga">Saga ${project.saga}</span>`
+    ? `<span class="tag saga">${project.saga}${project.sagaEpisode ? ` #${project.sagaEpisode}` : ""}</span>`
     : "";
 
   card.innerHTML = `
@@ -101,6 +101,7 @@ function setupFilters(projects, grid) {
         const project = projects[i];
         let show = true;
         if (filter === "ready") show = project.status === "ready";
+        else if (filter.startsWith("saga-")) show = project.saga === filter.slice(5);
         else if (filter === "saga") show = Boolean(project.saga);
         else if (filter === "soon") show = project.status === "soon";
         else if (filter !== "all") show = project.tags.includes(filter);
