@@ -147,7 +147,7 @@ html, body {
   position: relative;
   overflow: hidden;
   cursor: grab;
-  background: #0a120d;
+  background: #6ec5ff;
 }
 
 .scene-wrap.dragging {
