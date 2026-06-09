@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Capítulo 1 — Los Tontillos</title>
-  <meta name="description" content="Los Tontillos — capítulo 1 en el parque comiendo chuches.">
-  <link rel="stylesheet" href="../style.css?v=20260609a">
+  <meta name="description" content="Los Tontillos — capítulo 1 estilo Looney Tunes.">
+  <link rel="stylesheet" href="../style.css?v=20260609lt">
 </head>
-<body class="player-body">
+<body class="player-body player-body--lt">
   <div class="player-page">
     <a class="back" href="../index.html">← Los Tontillos</a>
 
-    <div class="stage-wrap stage-wrap--hero">
-      <canvas id="stage" aria-label="Escena del parque con los personajes"></canvas>
+    <div class="stage-wrap stage-wrap--hero stage-wrap--lt">
+      <canvas id="stage" aria-label="Escena del parque estilo Looney Tunes"></canvas>
       <p id="grass-mouth" class="grass-warning" hidden>🌱</p>
       <div class="sound-waves" id="sound-waves" hidden aria-hidden="true">
         <span></span><span></span><span></span><span></span>
@@ -21,14 +21,15 @@
 
     <div class="player-controls">
       <div class="progress-dots" id="progress-dots" aria-hidden="true"></div>
-      <button type="button" class="btn-next" id="btn-main">▶ Escuchar capítulo</button>
+      <button type="button" class="btn-next btn-next--lt" id="btn-main">▶ Escuchar capítulo</button>
     </div>
 
     <p class="player-hint" id="player-hint">Pulsa para que los personajes hablen solos.</p>
   </div>
 
-  <script src="../characters.js?v=20260609a"></script>
-  <script src="../voice.js?v=20260609a"></script>
-  <script src="play.js?v=20260609a"></script>
+  <script src="../lt-background.js?v=20260609lt"></script>
+  <script src="../characters.js?v=20260609lt"></script>
+  <script src="../voice.js?v=20260609lt"></script>
+  <script src="play.js?v=20260609lt"></script>
 </body>
 </html>

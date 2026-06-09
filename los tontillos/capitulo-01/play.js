@@ -187,6 +187,8 @@ let playing = false;
 let voiceActive = false;
 let activeSpeaker = null;
 let playGen = 0;
+let activeFx = null;
+let fxUntil = 0;
 
 window.onSpeakStart = (speaker) => {
   voiceActive = true;
@@ -223,85 +225,10 @@ function resize() {
 }
 
 function drawPark(w, h, t, grassMouth) {
-  const sky = ctx.createLinearGradient(0, 0, 0, h * 0.55);
-  sky.addColorStop(0, "#5bc0ff");
-  sky.addColorStop(1, "#87d8ff");
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, w, h);
-
-  ctx.fillStyle = "#ffd93d";
-  ctx.beginPath();
-  ctx.arc(w * 0.85, h * 0.12, h * 0.07, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  ctx.fillStyle = "#fff";
-  [[0.15, 0.1], [0.55, 0.08]].forEach(([cx, cy]) => {
-    ctx.beginPath();
-    ctx.arc(w * cx, h * cy, h * 0.04, 0, Math.PI * 2);
-    ctx.arc(w * (cx + 0.04), h * cy, h * 0.05, 0, Math.PI * 2);
-    ctx.arc(w * (cx + 0.08), h * cy, h * 0.04, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  });
-
-  ctx.fillStyle = grassMouth ? "#4fa832" : "#6bcf4a";
-  ctx.fillRect(0, h * 0.55, w, h * 0.45);
-
-  if (grassMouth) {
-    const mouthY = h * 0.72;
-    ctx.fillStyle = "#2d6a1e";
-    ctx.beginPath();
-    ctx.ellipse(w * 0.5, mouthY, w * 0.25, h * 0.06 + Math.sin(t * 6) * 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#e63946";
-    ctx.beginPath();
-    ctx.ellipse(w * 0.5, mouthY, w * 0.18, h * 0.035, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    for (let i = 0; i < 6; i++) {
-      ctx.fillRect(w * 0.38 + i * w * 0.04, mouthY - h * 0.05, w * 0.015, h * 0.04);
-    }
+  drawLooneyPark(ctx, w, h, t, grassMouth);
+  if (activeFx && performance.now() < fxUntil) {
+    drawCartoonFX(ctx, w, h, activeFx, t);
   }
-
-  const tx = w * 0.78;
-  const ty = h * 0.55;
-  ctx.fillStyle = "#8B4513";
-  ctx.fillRect(tx - 10, ty - h * 0.18, 20, h * 0.18);
-  ctx.fillStyle = "#2d6a1e";
-  ctx.beginPath();
-  ctx.arc(tx, ty - h * 0.22, h * 0.14, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  const bx = w * 0.5;
-  const by = h * 0.62;
-  ctx.fillStyle = "#8B4513";
-  ctx.fillRect(bx - w * 0.18, by, w * 0.36, h * 0.04);
-  ctx.fillRect(bx - w * 0.16, by + h * 0.04, h * 0.025, h * 0.1);
-  ctx.fillRect(bx + w * 0.14, by + h * 0.04, h * 0.025, h * 0.1);
-  ctx.strokeRect(bx - w * 0.18, by, w * 0.36, h * 0.04);
-
-  ctx.fillStyle = "#ff006e";
-  ctx.beginPath();
-  ctx.moveTo(w * 0.62, h * 0.58);
-  ctx.lineTo(w * 0.72, h * 0.58);
-  ctx.lineTo(w * 0.7, h * 0.68);
-  ctx.lineTo(w * 0.64, h * 0.68);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
-  ["#ffd93d", "#9b5de5", "#06d6a0", "#ff006e"].forEach((c, i) => {
-    ctx.fillStyle = c;
-    ctx.beginPath();
-    ctx.arc(w * (0.64 + i * 0.018), h * (0.6 + (i % 2) * 0.04), h * 0.018, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  });
 }
 
 function drawFrame() {
@@ -313,8 +240,8 @@ function drawFrame() {
   ctx.clearRect(0, 0, w, h);
   drawPark(w, h, t, line.grassMouth);
 
-  const baseY = h * 0.72;
-  const charSize = Math.min(w, h) * 0.38;
+  const baseY = h * 0.68;
+  const charSize = Math.min(w, h) * 0.42;
   const speaker = activeSpeaker ?? line.speaker;
 
   line.visible.forEach((id) => {
@@ -361,11 +288,30 @@ function drawFrame() {
   requestAnimationFrame(drawFrame);
 }
 
+function triggerEnterFX(line, w, h) {
+  if (line.enter === "gato") {
+    activeFx = { type: "stars", x: w * 0.66, y: h * 0.35 };
+    fxUntil = performance.now() + 1200;
+  } else if (line.enter === "rana") {
+    activeFx = { type: "poof", x: w * 0.64, y: h * 0.55 };
+    fxUntil = performance.now() + 900;
+  } else if (line.enter === "cerdo") {
+    activeFx = { type: "zap", x: w * 0.5, y: h * 0.4 };
+    fxUntil = performance.now() + 700;
+  } else if (line.enter === "palomo") {
+    activeFx = { type: "stars", x: w * 0.35, y: h * 0.2 };
+    fxUntil = performance.now() + 1000;
+  }
+}
+
 function prepareLineVisuals() {
   const line = LINES[lineIndex];
+  const w = canvas.width / devicePixelRatio;
+  const h = canvas.height / devicePixelRatio;
 
   if (line.enter === "gato") gatoFall = 0;
   if (line.enter === "rana") ranaPop = 0;
+  if (line.enter) triggerEnterFX(line, w, h);
   if (line.enter && enterAnim[line.enter] === undefined) enterAnim[line.enter] = 0;
   if (line.enter && enterAnim[line.enter] === 0) enterAnim[line.enter] = 0.01;
 

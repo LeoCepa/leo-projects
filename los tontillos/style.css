@@ -252,6 +252,27 @@ body {
 }
 
 /* —— Reproductor de capítulo —— */
+.player-body--lt {
+  background: linear-gradient(180deg, #7ec8ff 0%, #b8e4ff 35%, #72d54c 35%, #5cb838 100%);
+}
+
+.stage-wrap--lt {
+  border: 5px solid #000;
+  box-shadow: 10px 10px 0 #000;
+  border-radius: 0.5rem;
+}
+
+.btn-next--lt {
+  background: #ffe135;
+  border: 4px solid #000;
+  box-shadow: 5px 5px 0 #000;
+  font-family: "Bangers", cursive;
+}
+
+.btn-next--lt:hover:not(:disabled) {
+  box-shadow: 7px 7px 0 #000;
+}
+
 .player-body {
   background: linear-gradient(180deg, #1d3557 0%, #457b9d 40%, #6bcf4a 40%, #4fa832 100%);
 }

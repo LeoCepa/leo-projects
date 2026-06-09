@@ -1,448 +1,501 @@
-/** Personajes de Los Tontillos — estilo dibujo animado Warner */
-const INK = "#1a1a2e";
+/** Personajes Los Tontillos — estilo Looney Tunes clásico */
+const INK = "#000000";
 
-function ink(ctx, s) {
+function ink(ctx, s, w) {
   ctx.strokeStyle = INK;
-  ctx.lineWidth = Math.max(2, s * 0.08);
+  ctx.lineWidth = w ?? Math.max(3, s * 0.1);
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 }
 
-function shadow(ctx, s, yOff = 0.42) {
-  ctx.fillStyle = "rgba(0,0,0,0.15)";
+function fillStroke(ctx, s) {
+  ink(ctx, s);
+  ctx.stroke();
+}
+
+function ltShadow(ctx, s, yOff = 0.44) {
+  ctx.fillStyle = "rgba(0,0,0,0.2)";
   ctx.beginPath();
-  ctx.ellipse(0, s * yOff, s * 0.42, s * 0.09, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, s * yOff, s * 0.38, s * 0.08, 0, 0, Math.PI * 2);
   ctx.fill();
 }
 
-/** Pavo marilondo — plumas peinadas, muy serio */
-function drawPavoMarilondo(ctx, s, t, talking) {
-  const bob = talking ? Math.sin(t * 14) * s * 0.025 : Math.sin(t * 2) * s * 0.01;
-  ctx.save();
-  ctx.translate(0, bob);
+/** Ojos grandes estilo Looney Tunes */
+function ltEyes(ctx, s, t, talking, mood = "normal") {
+  const blink = Math.sin(t * 0.7) > 0.97;
+  const eyeH = blink ? s * 0.008 : s * 0.11;
+  const pupils = talking ? Math.sin(t * 12) * s * 0.015 : 0;
 
-  shadow(ctx, s);
-
-  // patas
-  ctx.fillStyle = INK;
-  ctx.fillRect(-s * 0.12, s * 0.28, s * 0.07, s * 0.18);
-  ctx.fillRect(s * 0.05, s * 0.28, s * 0.07, s * 0.18);
-  ctx.fillStyle = "#e85d04";
-  ctx.beginPath();
-  ctx.moveTo(-s * 0.18, s * 0.46);
-  ctx.lineTo(-s * 0.02, s * 0.44);
-  ctx.lineTo(-s * 0.08, s * 0.48);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.moveTo(s * 0.02, s * 0.44);
-  ctx.lineTo(s * 0.18, s * 0.46);
-  ctx.lineTo(s * 0.1, s * 0.48);
-  ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
-
-  // cuerpo plumas
-  ctx.fillStyle = "#2a6f4e";
-  ctx.beginPath();
-  ctx.ellipse(0, s * 0.08, s * 0.32, s * 0.28, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
-
-  // plumas cola abanico
-  ["#1b4332", "#40916c", "#52b788"].forEach((c, i) => {
-    ctx.fillStyle = c;
+  [[-s * 0.11, -s * 0.28], [s * 0.11, -s * 0.28]].forEach(([ex, ey]) => {
+    ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.moveTo(-s * 0.05, s * 0.05);
-    ctx.quadraticCurveTo(-s * (0.45 + i * 0.08), s * (0.1 - i * 0.05), -s * 0.35, s * (0.35 + i * 0.04));
-    ctx.quadraticCurveTo(-s * 0.15, s * 0.2, -s * 0.05, s * 0.12);
+    ctx.ellipse(ex, ey, s * 0.1, eyeH, 0, 0, Math.PI * 2);
     ctx.fill();
-    ink(ctx, s);
+    ink(ctx, s, Math.max(3, s * 0.09));
     ctx.stroke();
+
+    if (!blink) {
+      ctx.fillStyle = INK;
+      const pr = mood === "shocked" ? s * 0.045 : s * 0.035;
+      ctx.beginPath();
+      ctx.arc(ex + pupils, ey + (mood === "shocked" ? -s * 0.02 : 0), pr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(ex + s * 0.025 + pupils, ey - s * 0.025, s * 0.012, 0, Math.PI * 2);
+      ctx.fill();
+    }
   });
+}
 
-  // cuello
-  ctx.fillStyle = "#40916c";
-  ctx.beginPath();
-  ctx.ellipse(0, -s * 0.12, s * 0.14, s * 0.18, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
-
-  // cabeza
-  ctx.fillStyle = "#52b788";
-  ctx.beginPath();
-  ctx.arc(0, -s * 0.28, s * 0.2, 0, Math.PI * 2);
-  ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
-
-  // cresta peinada
-  ctx.fillStyle = "#e85d04";
-  for (let i = 0; i < 5; i++) {
+/** Boca exagerada cartoon */
+function ltMouth(ctx, s, t, talking, y, wide = false) {
+  if (talking) {
+    const open = s * (0.04 + Math.abs(Math.sin(t * 18)) * (wide ? 0.07 : 0.05));
+    ctx.fillStyle = INK;
     ctx.beginPath();
-    ctx.moveTo(-s * 0.08 + i * s * 0.04, -s * 0.42);
-    ctx.lineTo(-s * 0.04 + i * s * 0.04, -s * (0.55 + (i % 2) * 0.06));
-    ctx.lineTo(0 + i * s * 0.04, -s * 0.42);
+    ctx.ellipse(0, y, s * (wide ? 0.1 : 0.07), open, 0, 0, Math.PI * 2);
     ctx.fill();
-    ink(ctx, s);
+    ctx.fillStyle = "#ff6b8a";
+    ctx.beginPath();
+    ctx.ellipse(0, y + open * 0.3, s * 0.05, open * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = Math.max(2.5, s * 0.07);
+    ctx.beginPath();
+    ctx.arc(0, y, s * 0.05, 0.15, Math.PI - 0.15);
     ctx.stroke();
   }
+}
 
-  // barba roja
-  ctx.fillStyle = "#e63946";
-  ctx.beginPath();
-  ctx.moveTo(0, -s * 0.18);
-  ctx.quadraticCurveTo(s * 0.08, -s * 0.05, 0, s * 0.02);
-  ctx.quadraticCurveTo(-s * 0.08, -s * 0.05, 0, -s * 0.18);
-  ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+function squashStretch(ctx, s, t, talking) {
+  const sy = talking ? 1 + Math.sin(t * 14) * 0.06 : 1;
+  const sx = talking ? 1 - Math.sin(t * 14) * 0.04 : 1;
+  ctx.scale(sx, sy);
+}
 
-  // ojos serios
-  ctx.fillStyle = "#fff";
+/** Pavo marilondo — gallo/turkey pomposo estilo Foghorn */
+function drawPavoMarilondo(ctx, s, t, talking) {
+  const bob = talking ? Math.sin(t * 12) * s * 0.02 : Math.sin(t * 2) * s * 0.008;
+  ctx.save();
+  ctx.translate(0, bob);
+  squashStretch(ctx, s, t, talking);
+  ltShadow(ctx, s);
+
+  // Cola abanico enorme
+  ["#1a8c4a", "#2ecc71", "#27ae60", "#f39c12"].forEach((c, i) => {
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.08, s * 0.02);
+    ctx.quadraticCurveTo(-s * (0.5 + i * 0.06), -s * (0.1 + i * 0.04), -s * 0.42, s * (0.28 + i * 0.05));
+    ctx.quadraticCurveTo(-s * 0.2, s * 0.15, -s * 0.06, s * 0.1);
+    ctx.fill();
+    fillStroke(ctx, s);
+  });
+
+  // Patas naranjas cartoon
+  ctx.fillStyle = "#ff9100";
+  ctx.fillRect(-s * 0.14, s * 0.3, s * 0.08, s * 0.16);
+  ctx.fillRect(s * 0.06, s * 0.3, s * 0.08, s * 0.16);
+  fillStroke(ctx, s);
   ctx.beginPath();
-  ctx.arc(-s * 0.07, -s * 0.3, s * 0.055, 0, Math.PI * 2);
-  ctx.arc(s * 0.07, -s * 0.3, s * 0.055, 0, Math.PI * 2);
+  ctx.moveTo(-s * 0.2, s * 0.48);
+  ctx.lineTo(-s * 0.04, s * 0.45);
+  ctx.lineTo(-s * 0.1, s * 0.52);
+  ctx.moveTo(s * 0.04, s * 0.45);
+  ctx.lineTo(s * 0.2, s * 0.48);
+  ctx.lineTo(s * 0.12, s * 0.52);
   ctx.fill();
-  ctx.fillStyle = INK;
+  fillStroke(ctx, s);
+
+  // Cuerpo redondo grande
+  ctx.fillStyle = "#3cb878";
   ctx.beginPath();
-  ctx.arc(-s * 0.05, -s * 0.3, s * 0.028, 0, Math.PI * 2);
-  ctx.arc(s * 0.09, -s * 0.3, s * 0.028, 0, Math.PI * 2);
+  ctx.ellipse(0, s * 0.1, s * 0.34, s * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+  ctx.fillStyle = "rgba(255,255,255,0.15)";
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.08, s * 0.04, s * 0.12, s * 0.18, -0.3, 0, Math.PI * 2);
   ctx.fill();
 
-  // pico
-  ctx.fillStyle = "#ffb703";
+  // Cuello
+  ctx.fillStyle = "#45c987";
+  ctx.beginPath();
+  ctx.ellipse(0, -s * 0.1, s * 0.16, s * 0.2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Cabeza
+  ctx.fillStyle = "#52d99a";
+  ctx.beginPath();
+  ctx.arc(0, -s * 0.3, s * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Cresta roja grande
+  ctx.fillStyle = "#e53935";
+  [-0.06, 0, 0.06].forEach((ox, i) => {
+    ctx.beginPath();
+    ctx.moveTo(s * ox - s * 0.04, -s * 0.44);
+    ctx.quadraticCurveTo(s * ox, -s * (0.62 + i * 0.04), s * ox + s * 0.04, -s * 0.44);
+    ctx.fill();
+    fillStroke(ctx, s);
+  });
+
+  // Barba roja colgante
+  ctx.fillStyle = "#ef5350";
+  ctx.beginPath();
+  ctx.moveTo(0, -s * 0.2);
+  ctx.bezierCurveTo(s * 0.12, -s * 0.05, s * 0.1, s * 0.06, 0, s * 0.04);
+  ctx.bezierCurveTo(-s * 0.1, s * 0.06, -s * 0.12, -s * 0.05, 0, -s * 0.2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  ltEyes(ctx, s, t, talking, "normal");
+
+  // Pico grande
+  ctx.fillStyle = "#ffb300";
   ctx.beginPath();
   ctx.moveTo(0, -s * 0.22);
-  ctx.lineTo(s * 0.1, -s * 0.18);
+  ctx.quadraticCurveTo(s * 0.18, -s * 0.18, s * 0.14, -s * 0.12);
   ctx.lineTo(0, -s * 0.14);
   ctx.closePath();
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // boca hablando
-  if (talking) {
-    ctx.fillStyle = INK;
-    ctx.beginPath();
-    ctx.ellipse(0, -s * 0.16, s * 0.05, s * (0.03 + Math.abs(Math.sin(t * 16)) * 0.03), 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
+  ltMouth(ctx, s, t, talking, -s * 0.14, true);
   ctx.restore();
 }
 
-/** Gato estrella — estrella en la frente, boca morada si chuches */
+/** Gato estrella — estilo Sylvester exagerado */
 function drawGatoEstrella(ctx, s, t, talking, purpleMouth) {
-  const bob = talking ? Math.sin(t * 14) * s * 0.03 : Math.sin(t * 2.5) * s * 0.012;
+  const bob = talking ? Math.sin(t * 13) * s * 0.025 : Math.sin(t * 2.5) * s * 0.01;
   ctx.save();
   ctx.translate(0, bob);
+  squashStretch(ctx, s, t, talking);
+  ltShadow(ctx, s);
 
-  shadow(ctx, s);
-
-  // cola
+  // Cola larga curva
   ctx.strokeStyle = INK;
-  ctx.lineWidth = Math.max(2, s * 0.08);
+  ctx.lineWidth = Math.max(4, s * 0.12);
+  ctx.fillStyle = "#ff8c00";
   ctx.beginPath();
-  ctx.moveTo(s * 0.28, s * 0.1);
-  ctx.quadraticCurveTo(s * 0.55, s * 0.0, s * 0.5, -s * 0.2);
+  ctx.moveTo(s * 0.3, s * 0.12);
+  ctx.quadraticCurveTo(s * 0.65, s * 0.05, s * 0.55, -s * 0.25);
   ctx.stroke();
 
-  // cuerpo naranja
-  ctx.fillStyle = "#f77f00";
+  // Cuerpo gordo naranja
+  ctx.fillStyle = "#ff9100";
   ctx.beginPath();
-  ctx.ellipse(0, s * 0.1, s * 0.3, s * 0.26, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, s * 0.12, s * 0.32, s * 0.28, 0, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // cabeza
+  // Panza blanca
+  ctx.fillStyle = "#fff8e1";
   ctx.beginPath();
-  ctx.arc(0, -s * 0.18, s * 0.24, 0, Math.PI * 2);
+  ctx.ellipse(0, s * 0.16, s * 0.18, s * 0.2, 0, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
 
-  // orejas
-  ctx.fillStyle = "#f77f00";
-  [[-0.18, -0.38], [0.18, -0.38]].forEach(([ex, ey]) => {
+  // Cabeza grande
+  ctx.fillStyle = "#ff9100";
+  ctx.beginPath();
+  ctx.ellipse(0, -s * 0.2, s * 0.28, s * 0.26, 0, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Orejas puntiagudas
+  ctx.fillStyle = "#ff9100";
+  [[-0.22, -0.4], [0.22, -0.4]].forEach(([ex, ey]) => {
     ctx.beginPath();
     ctx.moveTo(s * ex, s * ey);
-    ctx.lineTo(s * (ex - 0.08), s * (ey - 0.18));
-    ctx.lineTo(s * (ex + 0.04), s * (ey - 0.1));
+    ctx.lineTo(s * (ex - 0.1), s * (ey - 0.22));
+    ctx.lineTo(s * (ex + 0.06), s * (ey - 0.08));
     ctx.closePath();
     ctx.fill();
-    ink(ctx, s);
-    ctx.stroke();
+    fillStroke(ctx, s);
+    ctx.fillStyle = "#ffb4a2";
+    ctx.beginPath();
+    ctx.moveTo(s * ex, s * ey);
+    ctx.lineTo(s * (ex - 0.05), s * (ey - 0.14));
+    ctx.lineTo(s * (ex + 0.03), s * (ey - 0.06));
+    ctx.fill();
+    ctx.fillStyle = "#ff9100";
   });
 
-  // estrella en frente
-  ctx.fillStyle = "#ffd93d";
-  ctx.strokeStyle = INK;
-  ctx.lineWidth = Math.max(2, s * 0.06);
-  const sx = 0, sy = -s * 0.32;
+  // Estrella dorada
+  ctx.fillStyle = "#ffe135";
+  const sy = -s * 0.38;
   ctx.beginPath();
   for (let i = 0; i < 5; i++) {
     const a = (i * 4 * Math.PI) / 5 - Math.PI / 2;
-    const r = i % 2 === 0 ? s * 0.1 : s * 0.045;
-    const px = sx + Math.cos(a) * r;
+    const r = i % 2 === 0 ? s * 0.12 : s * 0.055;
+    const px = Math.cos(a) * r;
     const py = sy + Math.sin(a) * r;
     if (i === 0) ctx.moveTo(px, py);
     else ctx.lineTo(px, py);
   }
   ctx.closePath();
   ctx.fill();
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // brillitos
-  if (talking || true) {
-    ctx.fillStyle = "#fff";
-    [[-0.35, -0.45], [0.38, -0.5]].forEach(([bx, by]) => {
-      ctx.globalAlpha = 0.5 + Math.sin(t * 5 + bx) * 0.3;
-      ctx.beginPath();
-      ctx.arc(s * bx, s * by, s * 0.025, 0, Math.PI * 2);
-      ctx.fill();
-    });
-    ctx.globalAlpha = 1;
-  }
-
-  // ojos
+  // Brillitos LT
   ctx.fillStyle = "#fff";
+  [[-0.38, -0.48], [0.4, -0.52], [0.5, -0.35]].forEach(([bx, by], i) => {
+    ctx.globalAlpha = 0.4 + Math.sin(t * 6 + i) * 0.4;
+    drawSparkle(ctx, s * bx, s * by, s * 0.04);
+  });
+  ctx.globalAlpha = 1;
+
+  ltEyes(ctx, s, t, talking, talking ? "normal" : "normal");
+
+  // Mejillas
+  ctx.fillStyle = "rgba(255,100,100,0.35)";
   ctx.beginPath();
-  ctx.arc(-s * 0.08, -s * 0.2, s * 0.06, 0, Math.PI * 2);
-  ctx.arc(s * 0.08, -s * 0.2, s * 0.06, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = INK;
-  ctx.beginPath();
-  ctx.arc(-s * 0.06, -s * 0.2, s * 0.03, 0, Math.PI * 2);
-  ctx.arc(s * 0.1, -s * 0.2, s * 0.03, 0, Math.PI * 2);
+  ctx.ellipse(-s * 0.2, -s * 0.15, s * 0.06, s * 0.04, 0, 0, Math.PI * 2);
+  ctx.ellipse(s * 0.2, -s * 0.15, s * 0.06, s * 0.04, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // hocico
+  // Hocico
   ctx.fillStyle = "#ffb4a2";
   ctx.beginPath();
-  ctx.ellipse(0, -s * 0.12, s * 0.05, s * 0.04, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -s * 0.1, s * 0.06, s * 0.05, 0, 0, Math.PI * 2);
   ctx.fill();
+  fillStroke(ctx, s);
 
-  // boca morada de chuches
-  ctx.fillStyle = purpleMouth ? "#9b5de5" : INK;
-  if (talking) {
+  if (purpleMouth && talking) {
+    ctx.fillStyle = "#9b5de5";
     ctx.beginPath();
-    ctx.ellipse(0, -s * 0.06, s * 0.06, s * (0.03 + Math.abs(Math.sin(t * 16)) * 0.025), 0, 0, Math.PI * 2);
+    ctx.ellipse(0, -s * 0.02, s * 0.08, s * (0.04 + Math.abs(Math.sin(t * 18)) * 0.04), 0, 0, Math.PI * 2);
     ctx.fill();
+    fillStroke(ctx, s);
   } else {
-    ctx.beginPath();
-    ctx.arc(0, -s * 0.06, s * 0.04, 0.1, Math.PI - 0.1);
-    ctx.stroke();
+    ltMouth(ctx, s, t, talking, -s * 0.02);
   }
 
   ctx.restore();
 }
 
-/** Cerdo trueno — pequeño, rayo en la frente */
-function drawCerdoTrueno(ctx, s, t, talking, shake) {
-  const sh = shake ? Math.sin(t * 40) * s * 0.04 : 0;
-  const bob = talking ? Math.sin(t * 14) * s * 0.025 : 0;
+function drawSparkle(ctx, x, y, r) {
   ctx.save();
-  ctx.translate(sh, bob);
-
-  shadow(ctx, s, 0.38);
-
-  ctx.fillStyle = "#ffb3c1";
+  ctx.translate(x, y);
   ctx.beginPath();
-  ctx.ellipse(0, s * 0.05, s * 0.28, s * 0.24, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ink(ctx, s);
+  ctx.moveTo(0, -r);
+  ctx.lineTo(0, r);
+  ctx.moveTo(-r, 0);
+  ctx.lineTo(r, 0);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2;
   ctx.stroke();
+  ctx.restore();
+}
 
+/** Cerdo trueno — estilo Porky Pig mini */
+function drawCerdoTrueno(ctx, s, t, talking, shake) {
+  const sh = shake ? Math.sin(t * 45) * s * 0.06 : 0;
+  ctx.save();
+  ctx.translate(sh, talking ? Math.sin(t * 14) * s * 0.02 : 0);
+  if (talking) squashStretch(ctx, s, t, true);
+  ltShadow(ctx, s, 0.4);
+
+  ctx.fillStyle = "#ffb3c6";
   ctx.beginPath();
-  ctx.arc(0, -s * 0.2, s * 0.22, 0, Math.PI * 2);
+  ctx.ellipse(0, s * 0.08, s * 0.3, s * 0.26, 0, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // orejas
   ctx.beginPath();
-  ctx.ellipse(-s * 0.2, -s * 0.28, s * 0.08, s * 0.12, -0.4, 0, Math.PI * 2);
-  ctx.ellipse(s * 0.2, -s * 0.28, s * 0.08, s * 0.12, 0.4, 0, Math.PI * 2);
+  ctx.arc(0, -s * 0.22, s * 0.24, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // rayo
-  ctx.fillStyle = "#ffd93d";
+  // Orejas caídas
   ctx.beginPath();
-  ctx.moveTo(0, -s * 0.42);
-  ctx.lineTo(-s * 0.06, -s * 0.28);
-  ctx.lineTo(s * 0.02, -s * 0.28);
-  ctx.lineTo(-s * 0.04, -s * 0.14);
-  ctx.lineTo(s * 0.08, -s * 0.32);
-  ctx.lineTo(s * 0.02, -s * 0.32);
+  ctx.ellipse(-s * 0.22, -s * 0.3, s * 0.1, s * 0.14, -0.5, 0, Math.PI * 2);
+  ctx.ellipse(s * 0.22, -s * 0.3, s * 0.1, s * 0.14, 0.5, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Rayo en la frente
+  ctx.fillStyle = "#ffe135";
+  ctx.beginPath();
+  ctx.moveTo(0, -s * 0.48);
+  ctx.lineTo(-s * 0.08, -s * 0.3);
+  ctx.lineTo(s * 0.02, -s * 0.3);
+  ctx.lineTo(-s * 0.06, -s * 0.14);
+  ctx.lineTo(s * 0.1, -s * 0.36);
   ctx.closePath();
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // hocico
+  // Hocico grande estilo Porky
   ctx.fillStyle = "#ff8fab";
   ctx.beginPath();
-  ctx.ellipse(0, -s * 0.12, s * 0.1, s * 0.08, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, -s * 0.1, s * 0.14, s * 0.11, 0, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
   ctx.fillStyle = INK;
   ctx.beginPath();
-  ctx.arc(-s * 0.035, -s * 0.12, s * 0.02, 0, Math.PI * 2);
-  ctx.arc(s * 0.035, -s * 0.12, s * 0.02, 0, Math.PI * 2);
+  ctx.ellipse(-s * 0.05, -s * 0.1, s * 0.035, s * 0.045, 0, 0, Math.PI * 2);
+  ctx.ellipse(s * 0.05, -s * 0.1, s * 0.035, s * 0.045, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // ojos
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(-s * 0.08, -s * 0.22, s * 0.05, 0, Math.PI * 2);
-  ctx.arc(s * 0.08, -s * 0.22, s * 0.05, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = INK;
-  ctx.beginPath();
-  ctx.arc(-s * 0.06, -s * 0.22, s * 0.025, 0, Math.PI * 2);
-  ctx.arc(s * 0.1, -s * 0.22, s * 0.025, 0, Math.PI * 2);
-  ctx.fill();
-
-  if (talking) {
-    ctx.fillStyle = INK;
-    ctx.beginPath();
-    ctx.ellipse(0, -s * 0.02, s * 0.05, s * 0.03, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ltEyes(ctx, s, t, talking, shake ? "shocked" : "normal");
+  ltMouth(ctx, s, t, talking, s * 0.02, true);
 
   ctx.restore();
 }
 
-/** Rana pantalón — pantalones enormes */
+/** Rana pantalón — estilo Michigan J Frog */
 function drawRanaPantalon(ctx, s, t, talking) {
-  const bob = talking ? Math.sin(t * 14) * s * 0.03 : Math.sin(t * 3) * s * 0.015;
   ctx.save();
-  ctx.translate(0, bob);
+  ctx.translate(0, talking ? Math.sin(t * 13) * s * 0.025 : Math.sin(t * 3) * s * 0.01);
+  if (talking) squashStretch(ctx, s, t, true);
+  ltShadow(ctx, s, 0.42);
 
-  shadow(ctx, s, 0.4);
-
-  // pantalón gigante
-  ctx.fillStyle = "#4361ee";
-  ctx.fillRect(-s * 0.28, s * 0.05, s * 0.56, s * 0.32);
-  ink(ctx, s);
-  ctx.strokeRect(-s * 0.28, s * 0.05, s * 0.56, s * 0.32);
+  // Pantalones azules enormes
+  ctx.fillStyle = "#1565c0";
+  ctx.fillRect(-s * 0.3, s * 0.06, s * 0.6, s * 0.34);
+  fillStroke(ctx, s);
+  ctx.fillStyle = "#1976d2";
+  ctx.fillRect(-s * 0.3, s * 0.06, s * 0.3, s * 0.34);
+  ctx.fillRect(0, s * 0.06, s * 0.3, s * 0.34);
+  // Tirantes
   ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(3, s * 0.07);
   ctx.beginPath();
-  ctx.moveTo(0, s * 0.05);
-  ctx.lineTo(0, s * 0.37);
+  ctx.moveTo(-s * 0.12, s * 0.06);
+  ctx.lineTo(-s * 0.08, -s * 0.06);
+  ctx.moveTo(s * 0.12, s * 0.06);
+  ctx.lineTo(s * 0.08, -s * 0.06);
   ctx.stroke();
-  // tirantes
-  ctx.lineWidth = Math.max(2, s * 0.06);
-  ctx.beginPath();
-  ctx.moveTo(-s * 0.1, s * 0.05);
-  ctx.lineTo(-s * 0.06, -s * 0.05);
-  ctx.moveTo(s * 0.1, s * 0.05);
-  ctx.lineTo(s * 0.06, -s * 0.05);
-  ctx.stroke();
+  // Botones
+  ctx.fillStyle = "#ffd700";
+  [0.15, 0.28, 0.4].forEach((fy) => {
+    ctx.beginPath();
+    ctx.arc(0, s * fy, s * 0.025, 0, Math.PI * 2);
+    ctx.fill();
+    fillStroke(ctx, s);
+  });
 
-  // cuerpo rana verde
-  ctx.fillStyle = "#6bcf4a";
+  // Cuerpo verde brillante
+  ctx.fillStyle = "#66dd44";
   ctx.beginPath();
-  ctx.ellipse(0, -s * 0.02, s * 0.22, s * 0.2, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, s * 0.02, s * 0.24, s * 0.22, 0, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // cabeza
+  // Cabeza
   ctx.beginPath();
-  ctx.arc(0, -s * 0.22, s * 0.2, 0, Math.PI * 2);
+  ctx.arc(0, -s * 0.24, s * 0.22, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // ojos saltones
-  [[-0.12, -0.32], [0.12, -0.32]].forEach(([ex, ey]) => {
+  // Ojos bulbosos en tallo
+  [[-0.14, -0.42], [0.14, -0.42]].forEach(([ex, ey]) => {
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = Math.max(2.5, s * 0.06);
+    ctx.beginPath();
+    ctx.moveTo(s * ex * 0.5, -s * 0.28);
+    ctx.lineTo(s * ex, s * ey);
+    ctx.stroke();
     ctx.fillStyle = "#fff";
     ctx.beginPath();
-    ctx.arc(s * ex, s * ey, s * 0.08, 0, Math.PI * 2);
+    ctx.arc(s * ex, s * ey, s * 0.1, 0, Math.PI * 2);
     ctx.fill();
-    ink(ctx, s);
-    ctx.stroke();
+    fillStroke(ctx, s);
     ctx.fillStyle = INK;
     ctx.beginPath();
-    ctx.arc(s * (ex + 0.02), s * ey, s * 0.04, 0, Math.PI * 2);
+    ctx.arc(s * ex + s * 0.025, s * ey, s * 0.045, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(s * ex + s * 0.04, s * ey - s * 0.03, s * 0.015, 0, Math.PI * 2);
     ctx.fill();
   });
 
-  if (talking) {
-    ctx.fillStyle = INK;
-    ctx.beginPath();
-    ctx.ellipse(0, -s * 0.12, s * 0.08, s * (0.04 + Math.abs(Math.sin(t * 16)) * 0.03), 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ltMouth(ctx, s, t, talking, -s * 0.14, true);
+
+  // Sombrero opcional cartoon
+  ctx.fillStyle = "#5d4037";
+  ctx.fillRect(-s * 0.18, -s * 0.38, s * 0.36, s * 0.04);
+  ctx.fillRect(-s * 0.1, -s * 0.48, s * 0.2, s * 0.1);
+  fillStroke(ctx, s);
 
   ctx.restore();
 }
 
-/** Palomo cartero */
+/** Palomo cartero — estilo mensajero clásico */
 function drawPalomoCartero(ctx, s, t, talking) {
-  const flap = Math.sin(t * 8) * s * 0.05;
+  const flap = Math.sin(t * 10) * s * 0.04;
   ctx.save();
   ctx.translate(0, flap);
+  ltShadow(ctx, s, 0.38);
 
-  shadow(ctx, s, 0.35);
+  // Alas batientes
+  const wingFlap = Math.sin(t * 12) * 0.4;
+  ctx.fillStyle = "#b0bec5";
+  [[-1, wingFlap], [1, -wingFlap]].forEach(([side, ang]) => {
+    ctx.save();
+    ctx.rotate(ang * side);
+    ctx.beginPath();
+    ctx.ellipse(side * s * 0.28, -s * 0.02, s * 0.22, s * 0.1, side * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    fillStroke(ctx, s);
+    ctx.restore();
+  });
 
-  // alas
-  ctx.fillStyle = "#adb5bd";
+  ctx.fillStyle = "#cfd8dc";
   ctx.beginPath();
-  ctx.ellipse(-s * 0.25, 0, s * 0.2, s * 0.1, -0.3, 0, Math.PI * 2);
-  ctx.ellipse(s * 0.25, 0, s * 0.2, s * 0.1, 0.3, 0, Math.PI * 2);
+  ctx.ellipse(0, s * 0.04, s * 0.2, s * 0.24, 0, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // cuerpo
-  ctx.fillStyle = "#ced4da";
   ctx.beginPath();
-  ctx.ellipse(0, s * 0.02, s * 0.18, s * 0.22, 0, 0, Math.PI * 2);
+  ctx.arc(0, -s * 0.2, s * 0.16, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
+  fillStroke(ctx, s);
 
-  // cabeza
+  // Gorra cartero
+  ctx.fillStyle = "#1565c0";
+  ctx.fillRect(-s * 0.14, -s * 0.36, s * 0.28, s * 0.06);
+  ctx.fillRect(-s * 0.1, -s * 0.44, s * 0.2, s * 0.1);
+  fillStroke(ctx, s);
+  ctx.fillStyle = "#ffd700";
   ctx.beginPath();
-  ctx.arc(0, -s * 0.18, s * 0.14, 0, Math.PI * 2);
+  ctx.arc(0, -s * 0.38, s * 0.04, 0, Math.PI * 2);
   ctx.fill();
-  ink(ctx, s);
-  ctx.stroke();
 
-  // pico
-  ctx.fillStyle = "#ffb703";
+  // Pico
+  ctx.fillStyle = "#ffb300";
   ctx.beginPath();
-  ctx.moveTo(0, -s * 0.16);
-  ctx.lineTo(s * 0.12, -s * 0.14);
+  ctx.moveTo(0, -s * 0.18);
+  ctx.lineTo(s * 0.14, -s * 0.15);
   ctx.lineTo(0, -s * 0.1);
   ctx.fill();
+  fillStroke(ctx, s);
 
-  // ojo
+  // Ojo grande
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(s * 0.06, -s * 0.22, s * 0.07, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
   ctx.fillStyle = INK;
   ctx.beginPath();
-  ctx.arc(s * 0.05, -s * 0.2, s * 0.03, 0, Math.PI * 2);
+  ctx.arc(s * 0.08, -s * 0.22, s * 0.035, 0, Math.PI * 2);
   ctx.fill();
 
-  // bolsa correo
-  ctx.fillStyle = "#8B4513";
-  ctx.fillRect(-s * 0.08, s * 0.08, s * 0.16, s * 0.14);
-  ink(ctx, s);
-  ctx.strokeRect(-s * 0.08, s * 0.08, s * 0.16, s * 0.14);
+  // Bolsa correo
+  ctx.fillStyle = "#8d6e63";
+  ctx.fillRect(-s * 0.1, s * 0.1, s * 0.2, s * 0.16);
+  fillStroke(ctx, s);
+  ctx.fillStyle = "#ffd700";
+  ctx.fillRect(-s * 0.04, s * 0.14, s * 0.08, s * 0.06);
 
-  if (talking) {
-    ctx.fillStyle = INK;
-    ctx.beginPath();
-    ctx.ellipse(0, -s * 0.1, s * 0.04, s * 0.025, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
+  ltMouth(ctx, s, t, talking, -s * 0.1);
 
   ctx.restore();
 }
