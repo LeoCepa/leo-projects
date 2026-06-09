@@ -149,15 +149,6 @@ const LINES = [
   },
 ];
 
-const SLOTS = {
-  pavo: -0.34,
-  gato: 0.34,
-  cerdo: 0.08,
-  rana: 0.28,
-  topo: -0.12,
-  palomo: -0.52,
-};
-
 const canvas = document.getElementById("stage");
 const ctx = canvas.getContext("2d");
 const btnMain = document.getElementById("btn-main");
@@ -205,8 +196,7 @@ function updateDots() {
 
 function resize() {
   const wrap = canvas.parentElement;
-  const w = wrap.clientWidth;
-  const h = Math.min(w * 0.72, 480);
+  const { w, h } = getStageSize(wrap);
   canvas.width = w * devicePixelRatio;
   canvas.height = h * devicePixelRatio;
   canvas.style.width = w + "px";
@@ -233,25 +223,27 @@ function drawFrame() {
   ctx.clearRect(0, 0, w, h);
   drawPark(w, h, t, line.grassMouth);
 
-  const baseY = h * 0.68;
-  const charSize = Math.min(w, h) * 0.4;
+  const baseY = h * 0.64;
+  const layout = layoutCharacters(line.visible, w, h);
   const speaker = activeSpeaker ?? line.speaker;
 
   line.visible.forEach((id, i) => {
-    let x = w * (0.5 + (SLOTS[id] ?? 0));
-    let y = baseY;
+    const pos = layout[id];
+    let x = pos.x;
+    let y = pos.y;
     let alpha = 1;
     let scale = 1;
+    const charSize = pos.size;
 
     if (chasing) {
-      x += Math.sin(chaseT * 8 + i * 2) * w * 0.06;
+      x += Math.sin(chaseT * 8 + i * 2) * w * 0.04;
       y += Math.cos(chaseT * 10 + i) * 8;
     } else if (voiceActive && (speaker === id || speaker === "all")) {
-      x += Math.sin(t * 18) * 4;
+      x += Math.sin(t * 18) * 3;
     }
 
     if (id === "topo" && topoPop < 1) {
-      y = baseY + h * 0.08 * (1 - topoPop);
+      y = pos.y + h * 0.08 * (1 - topoPop);
       topoPop = Math.min(1, topoPop + 0.04);
       scale = 0.4 + topoPop * 0.6;
     }

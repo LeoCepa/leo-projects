@@ -161,14 +161,6 @@ const LINES = [
   },
 ];
 
-const SLOTS = {
-  pavo: -0.32,
-  gato: 0.32,
-  cerdo: 0,
-  rana: 0.22,
-  palomo: -0.5,
-};
-
 const canvas = document.getElementById("stage");
 const ctx = canvas.getContext("2d");
 const btnMain = document.getElementById("btn-main");
@@ -215,8 +207,7 @@ function updateDots() {
 
 function resize() {
   const wrap = canvas.parentElement;
-  const w = wrap.clientWidth;
-  const h = Math.min(w * 0.72, 480);
+  const { w, h } = getStageSize(wrap);
   canvas.width = w * devicePixelRatio;
   canvas.height = h * devicePixelRatio;
   canvas.style.width = w + "px";
@@ -240,17 +231,19 @@ function drawFrame() {
   ctx.clearRect(0, 0, w, h);
   drawPark(w, h, t, line.grassMouth);
 
-  const baseY = h * 0.68;
-  const charSize = Math.min(w, h) * 0.42;
+  const baseY = h * 0.64;
+  const layout = layoutCharacters(line.visible, w, h);
   const speaker = activeSpeaker ?? line.speaker;
 
-  line.visible.forEach((id) => {
-    let x = w * (0.5 + (SLOTS[id] ?? 0));
-    let y = baseY;
+  line.visible.forEach((id, i) => {
+    const pos = layout[id];
+    let x = pos.x;
+    let y = pos.y;
     let alpha = 1;
     let scale = 1;
+    const charSize = pos.size;
 
-    if (voiceActive && id === speaker) {
+    if (voiceActive && (speaker === id || speaker === "all")) {
       x += Math.sin(t * 18) * 3;
     }
 
