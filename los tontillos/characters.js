@@ -572,6 +572,106 @@ function drawTopoCegato(ctx, s, t, talking) {
   ctx.restore();
 }
 
+/** Mapache ladrón — antifaz, cola rayada, muy tramposo */
+function drawMapacheLadron(ctx, s, t, talking, sneaky) {
+  const sway = sneaky ? Math.sin(t * 6) * s * 0.04 : 0;
+  ctx.save();
+  ctx.translate(sway, talking ? Math.sin(t * 14) * s * 0.02 : 0);
+  if (talking) squashStretch(ctx, s, t, true);
+  ltShadow(ctx, s);
+
+  // Cola rayada grande
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(4, s * 0.12);
+  ctx.beginPath();
+  ctx.moveTo(-s * 0.28, s * 0.1);
+  ctx.quadraticCurveTo(-s * 0.55, -s * 0.05, -s * 0.5, -s * 0.3);
+  ctx.stroke();
+  for (let i = 0; i < 5; i++) {
+    ctx.fillStyle = i % 2 === 0 ? "#78909c" : INK;
+    ctx.beginPath();
+    ctx.arc(-s * (0.38 + i * 0.04), -s * (0.05 + i * 0.05), s * 0.04, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Cuerpo gris
+  ctx.fillStyle = "#90a4ae";
+  ctx.beginPath();
+  ctx.ellipse(0, s * 0.1, s * 0.28, s * 0.26, 0, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Barriga clara
+  ctx.fillStyle = "#cfd8dc";
+  ctx.beginPath();
+  ctx.ellipse(0, s * 0.14, s * 0.16, s * 0.18, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Cabeza
+  ctx.fillStyle = "#90a4ae";
+  ctx.beginPath();
+  ctx.arc(0, -s * 0.2, s * 0.24, 0, Math.PI * 2);
+  ctx.fill();
+  fillStroke(ctx, s);
+
+  // Antifaz negro LT
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.ellipse(-s * 0.1, -s * 0.22, s * 0.1, s * 0.08, 0, 0, Math.PI * 2);
+  ctx.ellipse(s * 0.1, -s * 0.22, s * 0.1, s * 0.08, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(-s * 0.1, -s * 0.24, s * 0.2, s * 0.04);
+
+  // Ojos traviesos blancos dentro del antifaz
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(-s * 0.1, -s * 0.22, s * 0.045, 0, Math.PI * 2);
+  ctx.arc(s * 0.1, -s * 0.22, s * 0.045, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.arc(-s * 0.07, -s * 0.22, s * 0.022, 0, Math.PI * 2);
+  ctx.arc(s * 0.13, -s * 0.22, s * 0.022, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Orejas
+  ctx.fillStyle = "#78909c";
+  [[-0.2, -0.38], [0.2, -0.38]].forEach(([ex, ey]) => {
+    ctx.beginPath();
+    ctx.arc(s * ex, s * ey, s * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+    fillStroke(ctx, s);
+  });
+
+  // Nariz
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.arc(0, -s * 0.14, s * 0.035, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sonrisa tramposa
+  if (talking) {
+    ltMouth(ctx, s, t, true, -s * 0.06, true);
+  } else {
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = Math.max(2.5, s * 0.07);
+    ctx.beginPath();
+    ctx.arc(0, -s * 0.08, s * 0.08, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+  }
+
+  // Garra con chuche robada
+  if (sneaky) {
+    ctx.fillStyle = "#ff006e";
+    ctx.beginPath();
+    ctx.arc(s * 0.28, s * 0.02, s * 0.06, 0, Math.PI * 2);
+    ctx.fill();
+    fillStroke(ctx, s);
+  }
+
+  ctx.restore();
+}
+
 const DRAWERS = {
   pavo: drawPavoMarilondo,
   gato: drawGatoEstrella,
@@ -579,6 +679,7 @@ const DRAWERS = {
   rana: drawRanaPantalon,
   palomo: drawPalomoCartero,
   topo: drawTopoCegato,
+  mapache: drawMapacheLadron,
 };
 
 const CHARACTER_NAMES = {
@@ -588,6 +689,7 @@ const CHARACTER_NAMES = {
   rana: "Rana pantalón",
   palomo: "Palomo cartero",
   topo: "Topo cegato",
+  mapache: "Mapache ladrón",
 };
 
 function drawCharacter(ctx, id, s, t, opts = {}) {
@@ -595,5 +697,6 @@ function drawCharacter(ctx, id, s, t, opts = {}) {
   if (!fn) return;
   if (id === "gato") fn(ctx, s, t, opts.talking, opts.purpleMouth);
   else if (id === "cerdo") fn(ctx, s, t, opts.talking, opts.shake);
+  else if (id === "mapache") fn(ctx, s, t, opts.talking, opts.sneaky);
   else fn(ctx, s, t, opts.talking);
 }
