@@ -6,7 +6,7 @@ function repoBase() {
 
 function catalogUrl() {
   const base = SITE.self || ".";
-  return `${base}/projects.json?v=20260609rm`;
+  return `${base}/projects.json?v=20260609fresh`;
 }
 
 function gameUrl(project) {
