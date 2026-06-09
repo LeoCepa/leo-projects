@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, "..");
-const SKIP = new Set(["leocepa-com", ".git", "node_modules"]);
+const SKIP = new Set(["leocepa-com", ".git", "node_modules", "los tontillos"]);
 
 const meta = JSON.parse(
   await readFile(join(HERE, "project-meta.json"), "utf8")

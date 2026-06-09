@@ -71,14 +71,5 @@
     "description": "Encuentra 100 lobos escondidos en el bosque.",
     "tags": ["divertido"],
     "mobileFullscreen": true
-  },
-  "los tontillos": {
-    "title": "Los Tontillos",
-    "emoji": "🎬",
-    "description": "Serie de comedia muy graciosa con estilo Warner.",
-    "tags": ["divertido", "serie"],
-    "saga": "Los Tontillos",
-    "mobileFullscreen": true,
-    "entry": "index.html"
   }
 }

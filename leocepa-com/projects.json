@@ -115,17 +115,6 @@
     "status": "ready"
   },
   {
-    "id": "los tontillos",
-    "title": "Los Tontillos",
-    "emoji": "🎬",
-    "description": "Serie de comedia muy graciosa con estilo Warner.",
-    "path": "los tontillos/index.html",
-    "tags": ["divertido", "serie"],
-    "saga": "Los Tontillos",
-    "mobileFullscreen": true,
-    "status": "ready"
-  },
-  {
     "id": "zorro",
     "title": "Zorro",
     "emoji": "🦊",
