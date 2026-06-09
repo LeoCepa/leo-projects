@@ -1,10 +1,9 @@
-/** Motor del capítulo 1 — personajes que hablan */
+/** Motor del capítulo 1 — personajes hablan con voz, sin texto */
 const LINES = [
   {
     speaker: "pavo",
     visible: ["pavo"],
     text: "Yo, el pavo marilondo, me conocí con gato estrella en el parque comiendo chuches.",
-    sfx: null,
   },
   {
     speaker: "gato",
@@ -27,7 +26,7 @@ const LINES = [
   {
     speaker: "pavo",
     visible: ["pavo", "gato"],
-    text: "Sí. Como cuando alguien dice «solo comía chuches» y tiene la boca morada nuclear.",
+    text: "Sí. Como cuando alguien dice solo comía chuches y tiene la boca morada nuclear.",
   },
   {
     speaker: "gato",
@@ -77,7 +76,7 @@ const LINES = [
     speaker: "rana",
     visible: ["pavo", "gato", "cerdo", "rana"],
     enter: "rana",
-    text: "Yo la rana pantalón. Me metí en la bolsa porque alguien dijo «parque» y «chuches» y yo solo escucho oportunidad.",
+    text: "Yo la rana pantalón. Me metí en la bolsa porque alguien dijo parque y chuches y yo solo escucho oportunidad.",
   },
   {
     speaker: "gato",
@@ -99,7 +98,7 @@ const LINES = [
     speaker: "palomo",
     visible: ["pavo", "gato", "cerdo", "rana", "palomo"],
     enter: "palomo",
-    text: "Carta para «los que comen chuches en el parque».",
+    text: "Carta para los que comen chuches en el parque.",
   },
   {
     speaker: "gato",
@@ -110,7 +109,7 @@ const LINES = [
   {
     speaker: "palomo",
     visible: ["pavo", "gato", "cerdo", "rana", "palomo"],
-    text: "Pone: «Los cuatro tontillos del banco número siete».",
+    text: "Pone: Los cuatro tontillos del banco número siete.",
   },
   {
     speaker: "cerdo",
@@ -121,7 +120,7 @@ const LINES = [
   {
     speaker: "palomo",
     visible: ["pavo", "gato", "cerdo", "rana", "palomo"],
-    text: "La carta dice: «Dejad de comer chuches en el parque o el parque os comerá a vosotros».",
+    text: "La carta dice: Dejad de comer chuches en el parque o el parque os comerá a vosotros.",
   },
   {
     speaker: "rana",
@@ -172,22 +171,50 @@ const SLOTS = {
 
 const canvas = document.getElementById("stage");
 const ctx = canvas.getContext("2d");
-const nameEl = document.getElementById("speaker-name");
-const textEl = document.getElementById("speech-text");
-const btnNext = document.getElementById("btn-next");
-const progressEl = document.getElementById("progress");
+const btnMain = document.getElementById("btn-main");
+const progressDots = document.getElementById("progress-dots");
 const grassMouthEl = document.getElementById("grass-mouth");
+const soundWaves = document.getElementById("sound-waves");
+const hintEl = document.getElementById("player-hint");
 
 let lineIndex = 0;
 let startTime = 0;
 let enterAnim = {};
 let gatoFall = 1;
 let ranaPop = 0;
+let started = false;
+let playing = false;
+let voiceActive = false;
+let activeSpeaker = null;
+let playGen = 0;
+
+window.onSpeakStart = (speaker) => {
+  voiceActive = true;
+  activeSpeaker = speaker;
+  soundWaves.hidden = false;
+};
+
+window.onSpeakEnd = () => {
+  voiceActive = false;
+  activeSpeaker = null;
+  soundWaves.hidden = true;
+};
+
+function buildDots() {
+  progressDots.innerHTML = LINES.map((_, i) => `<span class="dot${i === 0 ? " active" : ""}"></span>`).join("");
+}
+
+function updateDots() {
+  [...progressDots.children].forEach((dot, i) => {
+    dot.classList.toggle("active", i === lineIndex);
+    dot.classList.toggle("done", i < lineIndex);
+  });
+}
 
 function resize() {
   const wrap = canvas.parentElement;
   const w = wrap.clientWidth;
-  const h = Math.min(w * 0.62, 420);
+  const h = Math.min(w * 0.72, 480);
   canvas.width = w * devicePixelRatio;
   canvas.height = h * devicePixelRatio;
   canvas.style.width = w + "px";
@@ -202,7 +229,6 @@ function drawPark(w, h, t, grassMouth) {
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h);
 
-  // sol
   ctx.fillStyle = "#ffd93d";
   ctx.beginPath();
   ctx.arc(w * 0.85, h * 0.12, h * 0.07, 0, Math.PI * 2);
@@ -211,7 +237,6 @@ function drawPark(w, h, t, grassMouth) {
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // nubes
   ctx.fillStyle = "#fff";
   [[0.15, 0.1], [0.55, 0.08]].forEach(([cx, cy]) => {
     ctx.beginPath();
@@ -222,7 +247,6 @@ function drawPark(w, h, t, grassMouth) {
     ctx.stroke();
   });
 
-  // césped
   ctx.fillStyle = grassMouth ? "#4fa832" : "#6bcf4a";
   ctx.fillRect(0, h * 0.55, w, h * 0.45);
 
@@ -242,7 +266,6 @@ function drawPark(w, h, t, grassMouth) {
     }
   }
 
-  // árbol
   const tx = w * 0.78;
   const ty = h * 0.55;
   ctx.fillStyle = "#8B4513";
@@ -255,7 +278,6 @@ function drawPark(w, h, t, grassMouth) {
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  // banco
   const bx = w * 0.5;
   const by = h * 0.62;
   ctx.fillStyle = "#8B4513";
@@ -264,7 +286,6 @@ function drawPark(w, h, t, grassMouth) {
   ctx.fillRect(bx + w * 0.14, by + h * 0.04, h * 0.025, h * 0.1);
   ctx.strokeRect(bx - w * 0.18, by, w * 0.36, h * 0.04);
 
-  // bolsa chuches
   ctx.fillStyle = "#ff006e";
   ctx.beginPath();
   ctx.moveTo(w * 0.62, h * 0.58);
@@ -274,9 +295,13 @@ function drawPark(w, h, t, grassMouth) {
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
-  ctx.font = `bold ${h * 0.04}px Nunito`;
-  ctx.fillStyle = "#fff";
-  ctx.fillText("CHUCHES", w * 0.615, h * 0.645);
+  ["#ffd93d", "#9b5de5", "#06d6a0", "#ff006e"].forEach((c, i) => {
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(w * (0.64 + i * 0.018), h * (0.6 + (i % 2) * 0.04), h * 0.018, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
 }
 
 function drawFrame() {
@@ -290,12 +315,17 @@ function drawFrame() {
 
   const baseY = h * 0.72;
   const charSize = Math.min(w, h) * 0.38;
+  const speaker = activeSpeaker ?? line.speaker;
 
   line.visible.forEach((id) => {
     let x = w * (0.5 + (SLOTS[id] ?? 0));
     let y = baseY;
     let alpha = 1;
     let scale = 1;
+
+    if (voiceActive && id === speaker) {
+      x += Math.sin(t * 18) * 3;
+    }
 
     if (id === "gato" && gatoFall < 1) {
       y = -h * 0.2 + (baseY + h * 0.2) * gatoFall;
@@ -318,11 +348,11 @@ function drawFrame() {
     ctx.translate(x, y);
     ctx.scale(scale, scale);
 
-    const talking = line.speaker === id || line.speaker === "all";
+    const talking = voiceActive && (speaker === "all" || speaker === id);
     drawCharacter(ctx, id, charSize, t, {
       talking,
       purpleMouth: line.purpleMouth && id === "gato",
-      shake: line.shake && id === "cerdo",
+      shake: (line.shake && id === "cerdo") || (voiceActive && line.shake && id === "cerdo"),
     });
 
     ctx.restore();
@@ -331,9 +361,8 @@ function drawFrame() {
   requestAnimationFrame(drawFrame);
 }
 
-function showLine() {
+function prepareLineVisuals() {
   const line = LINES[lineIndex];
-  const isLast = lineIndex >= LINES.length - 1;
 
   if (line.enter === "gato") gatoFall = 0;
   if (line.enter === "rana") ranaPop = 0;
@@ -344,52 +373,94 @@ function showLine() {
     if (enterAnim[id] === undefined) enterAnim[id] = 1;
   });
 
-  const speakerLabel =
-    line.speaker === "all"
-      ? "¡TODOS!"
-      : CHARACTER_NAMES[line.speaker] ?? line.speaker;
-
-  nameEl.textContent = speakerLabel;
-  nameEl.dataset.speaker = line.speaker;
-  textEl.textContent = line.text;
-  textEl.classList.remove("pop");
-  void textEl.offsetWidth;
-  textEl.classList.add("pop");
-
-  if (grassMouthEl) {
-    grassMouthEl.hidden = !line.grassMouth;
-  }
-
-  btnNext.textContent = isLast ? "🎬 Fin del capítulo" : "▶ Siguiente";
-  progressEl.textContent = `${lineIndex + 1} / ${LINES.length}`;
+  if (grassMouthEl) grassMouthEl.hidden = !line.grassMouth;
+  updateDots();
 }
 
-function nextLine() {
-  if (lineIndex < LINES.length - 1) {
-    lineIndex++;
-    showLine();
-  } else {
-    btnNext.disabled = true;
-    btnNext.textContent = "✅ ¡Capítulo terminado!";
+async function playCurrentLine() {
+  if (lineIndex >= LINES.length) {
+    finishChapter();
+    return;
   }
+
+  const gen = ++playGen;
+  const line = LINES[lineIndex];
+  prepareLineVisuals();
+  playing = true;
+  btnMain.textContent = "⏭ Saltar frase";
+  hintEl.textContent = "Los personajes están hablando…";
+
+  await speak(line.text, line.speaker);
+
+  if (gen !== playGen || !playing) return;
+
+  lineIndex++;
+  if (lineIndex < LINES.length) {
+    await pause(350);
+    if (gen === playGen && playing) playCurrentLine();
+  } else {
+    finishChapter();
+  }
+}
+
+function pause(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function finishChapter() {
+  playing = false;
+  playGen++;
+  updateDots();
+  [...progressDots.children].forEach((d) => d.classList.add("done"));
+  btnMain.textContent = "🔄 Escuchar otra vez";
+  btnMain.disabled = false;
+  hintEl.textContent = "¡Capítulo terminado!";
+  started = false;
+  lineIndex = LINES.length;
+}
+
+function skipLine() {
+  playGen++;
+  stopSpeaking();
+}
+
+async function startChapter() {
+  if (playing && lineIndex < LINES.length) {
+    skipLine();
+    lineIndex++;
+    await pause(150);
+    if (lineIndex < LINES.length) {
+      playing = true;
+      playCurrentLine();
+    } else {
+      finishChapter();
+    }
+    return;
+  }
+
+  if (lineIndex >= LINES.length) {
+    lineIndex = 0;
+    enterAnim = { pavo: 1 };
+    gatoFall = 1;
+    ranaPop = 0;
+    buildDots();
+  }
+
+  started = true;
+  playing = true;
+  playCurrentLine();
 }
 
 function init() {
   enterAnim.pavo = 1;
+  buildDots();
   resize();
   window.addEventListener("resize", resize);
   startTime = performance.now();
-  showLine();
+  prepareLineVisuals();
   drawFrame();
 
-  btnNext.addEventListener("click", nextLine);
-  canvas.addEventListener("click", nextLine);
-  document.addEventListener("keydown", (e) => {
-    if (e.key === " " || e.key === "Enter") {
-      e.preventDefault();
-      if (!btnNext.disabled) nextLine();
-    }
-  });
+  btnMain.addEventListener("click", startChapter);
 }
 
 init();
