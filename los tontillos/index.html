@@ -18,6 +18,9 @@
       </p>
     </header>
 
+    <h2 class="chapters-title">🎭 Los personajes</h2>
+    <div class="cast-grid" id="cast-grid"></div>
+
     <h2 class="chapters-title">📺 Capítulos</h2>
     <ul class="chapter-list" id="chapter-list">
       <li>Cargando capítulos…</li>
@@ -28,7 +31,26 @@
     </footer>
   </div>
 
+  <script src="characters.js"></script>
   <script>
+    const castIds = ["pavo", "gato", "cerdo", "rana", "palomo"];
+    const castGrid = document.getElementById("cast-grid");
+    castIds.forEach((id) => {
+      const card = document.createElement("div");
+      card.className = "cast-card";
+      const c = document.createElement("canvas");
+      c.width = 160;
+      c.height = 160;
+      const cx = c.getContext("2d");
+      cx.translate(80, 115);
+      drawCharacter(cx, id, 130, performance.now() / 1000, { talking: false });
+      const label = document.createElement("p");
+      label.textContent = CHARACTER_NAMES[id];
+      card.appendChild(c);
+      card.appendChild(label);
+      castGrid.appendChild(card);
+    });
+
     fetch("chapters.json")
       .then((r) => r.json())
       .then((chapters) => {

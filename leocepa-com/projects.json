@@ -122,6 +122,7 @@
     "path": "los tontillos/index.html",
     "tags": ["divertido", "serie"],
     "saga": "Los Tontillos",
+    "mobileFullscreen": true,
     "status": "ready"
   },
   {
