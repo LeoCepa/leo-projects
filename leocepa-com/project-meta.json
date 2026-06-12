@@ -48,7 +48,7 @@
   "hasta la luna o mas": {
     "title": "Hasta la luna o más",
     "emoji": "🌙",
-    "description": "Escala hasta la luna. ¡Solo o multijugador online!",
+    "description": "Escala hasta la luna. Solo, local u online.",
     "tags": ["aventura"],
     "mobileFullscreen": true
   },
