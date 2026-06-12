@@ -104,11 +104,58 @@
         margin-top: 2px;
         opacity: 0.9;
       }
+
+      #menu-btns, #lobby-ui {
+        display: none;
+        position: fixed;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10002;
+        width: min(92%, 320px);
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: auto;
+      }
+      #menu-btns { bottom: 28%; }
+      #lobby-ui { bottom: 22%; text-align: center; }
+      #menu-btns.visible, #lobby-ui.visible { display: flex; }
+      #menu-btns button, #lobby-ui button {
+        touch-action: manipulation;
+        border: 2px solid rgba(255,255,255,0.4);
+        background: rgba(30,30,60,0.9);
+        color: #fff;
+        font-family: "Segoe UI", sans-serif;
+        font-size: 15px;
+        font-weight: 600;
+        padding: 14px 16px;
+        border-radius: 14px;
+      }
+      #lobby-ui p {
+        color: #ddeeff;
+        font-family: "Segoe UI", sans-serif;
+        font-size: 14px;
+        line-height: 1.45;
+        background: rgba(0,0,0,0.45);
+        padding: 10px 12px;
+        border-radius: 12px;
+      }
+      #lobby-room { font-size: 18px; font-weight: 700; color: #fff; }
     </style>
   </head>
   <body>
     <a id="back-link" href="../index.html">← Volver</a>
     <div id="game"></div>
+    <div id="menu-btns">
+      <button type="button" id="btn-solo">🎮 Jugar solo</button>
+      <button type="button" id="btn-create">👥 Crear sala online</button>
+      <button type="button" id="btn-join">🔗 Unirse a sala</button>
+    </div>
+    <div id="lobby-ui">
+      <p id="lobby-room">Sala: ----</p>
+      <p id="lobby-players">Jugadores: …</p>
+      <button type="button" id="lobby-copy">📋 Copiar enlace</button>
+      <button type="button" id="lobby-start">🚀 ¡Empezar partida!</button>
+    </div>
     <div id="touch-controls" aria-label="Controles táctiles">
       <div class="move-group">
         <button type="button" id="tc-left" aria-label="Izquierda">←</button>
@@ -117,6 +164,7 @@
       <button type="button" id="tc-jump" aria-label="Saltar">↑<small>SALTAR</small></button>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script>
       const GAME_WIDTH = 480;
       const GAME_HEIGHT = 720;
@@ -290,6 +338,272 @@
 
       initDomTouchControls();
 
+      const PLAYER_COLORS = [0xff6b4a, 0x4a9fff, 0x66ee88, 0xff66ee];
+
+      function getPlayerName() {
+        let name = localStorage.getItem("hasta-luna-name");
+        if (!name) {
+          name = prompt("¿Cómo te llamas?", "Jugador") || "Jugador";
+          name = name.trim().slice(0, 12) || "Jugador";
+          localStorage.setItem("hasta-luna-name", name);
+        }
+        return name;
+      }
+
+      function shareRoomUrl(roomId) {
+        const url = new URL(location.href);
+        url.searchParams.set("room", roomId);
+        url.searchParams.delete("host");
+        return url.toString();
+      }
+
+      class MultiplayerManager {
+        constructor(scene) {
+          this.scene = scene;
+          this.active = false;
+          this.isHost = false;
+          this.roomId = null;
+          this.peer = null;
+          this.conns = new Map();
+          this.players = new Map();
+          this.localPeerId = null;
+          this.localColor = PLAYER_COLORS[0];
+          this.seed = null;
+          this.name = getPlayerName();
+          this.started = false;
+          this.lastSync = 0;
+        }
+
+        generateRoomId() {
+          const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+          let id = "";
+          for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
+          return id;
+        }
+
+        peerIdForRoom(roomId) {
+          return "hluna" + roomId.toLowerCase();
+        }
+
+        createRoom(forcedRoomId) {
+          return new Promise((resolve, reject) => {
+            if (typeof Peer === "undefined") { reject(new Error("no_peer")); return; }
+            this.active = true;
+            this.isHost = true;
+            this.roomId = forcedRoomId ? forcedRoomId.toUpperCase() : this.generateRoomId();
+            this.seed = Math.floor(Math.random() * 999999999);
+            const peerId = this.peerIdForRoom(this.roomId);
+            this.peer = new Peer(peerId);
+            this.peer.on("open", (id) => {
+              this.localPeerId = id;
+              this.localColor = PLAYER_COLORS[0];
+              this.players.set(id, { id, name: this.name, color: this.localColor });
+              const u = new URL(location.href);
+              u.searchParams.set("room", this.roomId);
+              u.searchParams.set("host", "1");
+              history.replaceState(null, "", u.toString());
+              resolve(this.roomId);
+            });
+            this.peer.on("connection", (conn) => this.wireConn(conn));
+            this.peer.on("error", (err) => {
+              if (err.type === "unavailable-id") {
+                this.peer.destroy();
+                this.createRoom().then(resolve).catch(reject);
+              } else reject(err);
+            });
+          });
+        }
+
+        joinRoom(roomId) {
+          return new Promise((resolve, reject) => {
+            if (typeof Peer === "undefined") { reject(new Error("no_peer")); return; }
+            this.active = true;
+            this.isHost = false;
+            this.roomId = roomId.toUpperCase();
+            let done = false;
+            this.peer = new Peer();
+            this.peer.on("open", () => {
+              const conn = this.peer.connect(this.peerIdForRoom(this.roomId), { reliable: true });
+              this.wireConn(conn, true);
+              conn.on("open", () => {
+                if (done) return;
+                done = true;
+                this.sendConn(conn, { t: "join", name: this.name });
+                resolve(this.roomId);
+              });
+              conn.on("error", reject);
+            });
+            this.peer.on("error", reject);
+            setTimeout(() => { if (!done) reject(new Error("timeout")); }, 18000);
+          });
+        }
+
+        wireConn(conn, isHostConn) {
+          conn.on("data", (raw) => this.onData(conn, raw));
+          conn.on("close", () => {
+            const id = conn.peer;
+            if (this.isHost) {
+              this.conns.delete(id);
+              this.players.delete(id);
+              this.broadcast({ t: "out", id }, id);
+              this.scene.onRemoteEvent({ t: "out", id });
+              this.scene.onLobbyUpdate();
+            }
+          });
+          if (this.isHost && conn.peer) this.conns.set(conn.peer, conn);
+          if (!this.isHost && isHostConn) this.conns.set("host", conn);
+        }
+
+        serializePlayers() {
+          return [...this.players.values()].map((p) => ({
+            id: p.id, name: p.name, color: p.color,
+          }));
+        }
+
+        onData(conn, raw) {
+          let msg;
+          try { msg = typeof raw === "string" ? JSON.parse(raw) : raw; } catch { return; }
+
+          if (this.isHost) {
+            if (msg.t === "join") {
+              if (this.players.size >= 4) return;
+              const guestId = conn.peer;
+              const color = PLAYER_COLORS[this.players.size % PLAYER_COLORS.length];
+              this.players.set(guestId, { id: guestId, name: msg.name, color });
+              this.conns.set(guestId, conn);
+              this.sendConn(conn, {
+                t: "welcome",
+                seed: this.seed,
+                id: guestId,
+                color,
+                players: this.serializePlayers(),
+              });
+              this.broadcast({ t: "joined", id: guestId, name: msg.name, color }, guestId);
+              this.scene.onPlayerJoined({ id: guestId, name: msg.name, color });
+              this.scene.onLobbyUpdate();
+            } else if (msg.t === "pos" || msg.t === "fall" || msg.t === "moon") {
+              this.broadcast(msg, conn.peer);
+              this.scene.onRemoteEvent(msg);
+            }
+            return;
+          }
+
+          if (msg.t === "welcome") {
+            this.localPeerId = msg.id;
+            this.seed = msg.seed;
+            this.localColor = msg.color;
+            this.players.clear();
+            msg.players.forEach((p) => this.players.set(p.id, p));
+            this.scene.onLobbyUpdate();
+          } else if (msg.t === "start") {
+            this.started = true;
+            this.scene.startMultiplayerGame(msg.seed);
+          } else if (msg.t === "joined") {
+            this.players.set(msg.id, { id: msg.id, name: msg.name, color: msg.color });
+            this.scene.onPlayerJoined(msg);
+            this.scene.onLobbyUpdate();
+          } else if (msg.t === "pos" || msg.t === "fall" || msg.t === "moon" || msg.t === "out") {
+            this.scene.onRemoteEvent(msg);
+          }
+        }
+
+        sendConn(conn, msg) {
+          if (conn && conn.open) conn.send(JSON.stringify(msg));
+        }
+
+        broadcast(msg, exceptId) {
+          for (const [id, conn] of this.conns) {
+            if (id !== exceptId) this.sendConn(conn, msg);
+          }
+        }
+
+        sendToHost(msg) {
+          this.sendConn(this.conns.get("host"), msg);
+        }
+
+        emit(msg) {
+          if (!this.active) return;
+          if (this.isHost) this.broadcast(msg);
+          else this.sendToHost(msg);
+        }
+
+        syncScene(scene) {
+          if (!this.active || !this.started || scene.state !== "playing") return;
+          const now = Date.now();
+          if (now - this.lastSync < 55) return;
+          this.lastSync = now;
+          const msg = {
+            t: "pos",
+            id: this.localPeerId,
+            x: scene.player.x,
+            y: scene.player.y,
+            f: scene.player.facing,
+            alt: Math.floor(scene.altitudeMeters),
+          };
+          if (this.isHost) {
+            this.broadcast(msg);
+            scene.onRemoteEvent(msg);
+          } else {
+            this.sendToHost(msg);
+          }
+        }
+
+        hostStart() {
+          if (!this.isHost) return;
+          this.started = true;
+          this.broadcast({ t: "start", seed: this.seed });
+          this.scene.startMultiplayerGame(this.seed);
+        }
+
+        destroy() {
+          for (const conn of this.conns.values()) conn.close();
+          if (this.peer) this.peer.destroy();
+          this.conns.clear();
+          this.players.clear();
+          this.active = false;
+          this.started = false;
+          this.peer = null;
+        }
+      }
+
+      class RemoteAvatar {
+        constructor(scene, id, name, color) {
+          this.id = id;
+          this.sprite = scene.add.rectangle(0, 0, PLAYER_CFG.width, PLAYER_CFG.height, color);
+          this.sprite.setStrokeStyle(2, 0xffffff, 0.5);
+          this.label = scene.add.text(0, 0, name, {
+            fontFamily: "Segoe UI, sans-serif", fontSize: "11px", color: "#ffffff",
+          }).setOrigin(0.5, 1);
+          this.label.setShadow(1, 1, "#000", 2);
+          this.tx = 0; this.ty = 0; this.facing = 1;
+          this.altitude = 0;
+          this.fallen = false;
+        }
+
+        setTarget(x, y, f, alt) {
+          this.tx = x; this.ty = y; this.facing = f;
+          this.altitude = alt;
+        }
+
+        update() {
+          if (this.fallen) return;
+          this.sprite.x = Phaser.Math.Linear(this.sprite.x, this.tx, 0.4);
+          this.sprite.y = Phaser.Math.Linear(this.sprite.y, this.ty, 0.4);
+          this.sprite.setScale(this.facing, 1);
+          this.label.setPosition(this.sprite.x, this.sprite.y - 22);
+        }
+
+        markFallen() {
+          this.fallen = true;
+          this.sprite.setAlpha(0.35);
+        }
+
+        destroy() {
+          this.sprite.destroy();
+          this.label.destroy();
+        }
+      }
+
       class Player {
         constructor(scene, x, y) {
           this.scene = scene;
@@ -343,11 +657,12 @@
       }
 
       class WorldGenerator {
-        constructor(scene, platformGroup, startY) {
+        constructor(scene, platformGroup, startY, seed) {
           this.scene = scene;
           this.platformGroup = platformGroup;
           this.platforms = [];
           this.zone = getZoneForAltitude(0);
+          this.rng = seed != null ? new Phaser.Math.RandomDataGenerator([String(seed)]) : null;
 
           const first = this.createPlatform(startY, GAME_WIDTH / 2, 150, "normal");
           this.platforms.push(first);
@@ -357,12 +672,20 @@
           }
         }
 
+        rndFrac() {
+          return this.rng ? this.rng.frac() : Math.random();
+        }
+
+        rndBetween(min, max) {
+          return Math.floor(this.rndFrac() * (max - min + 1)) + min;
+        }
+
         getTopPlatform() {
           return this.platforms.reduce((top, p) => (p.sprite.y < top.sprite.y ? p : top));
         }
 
         pickType(altitudeMeters) {
-          const roll = Math.random();
+          const roll = this.rndFrac();
           if (altitudeMeters > 3000 && roll < 0.1) return "moving";
           if (altitudeMeters > 1000 && roll < 0.15) return "fragile";
           return "normal";
@@ -382,8 +705,8 @@
 
           const data = { sprite, body: sprite.body, type };
           if (type === "moving") {
-            data.moveSpeed = Phaser.Math.Between(35, 70);
-            data.moveDir = Math.random() < 0.5 ? -1 : 1;
+            data.moveSpeed = this.rndBetween(35, 70);
+            data.moveDir = this.rndFrac() < 0.5 ? -1 : 1;
             const halfW = width / 2;
             data.moveMin = WORLD.horizontalMargin + halfW;
             data.moveMax = this.scene.scale.width - WORLD.horizontalMargin - halfW;
@@ -393,10 +716,10 @@
         }
 
         spawnNextPlatform(prev) {
-          const gap = Phaser.Math.Between(WORLD.verticalGapMin, WORLD.verticalGapMax);
+          const gap = this.rndBetween(WORLD.verticalGapMin, WORLD.verticalGapMax);
           const y = prev.sprite.y - gap;
           const reach = maxHorizontalReach(gap);
-          const width = Phaser.Math.Between(WORLD.platformMinWidth, WORLD.platformMaxWidth);
+          const width = this.rndBetween(WORLD.platformMinWidth, WORLD.platformMaxWidth);
           const halfW = width / 2;
           const screenW = this.scene.scale.width;
 
@@ -412,7 +735,7 @@
           if (minX > maxX) {
             x = Phaser.Math.Clamp(prev.sprite.x, screenMin, screenMax);
           } else {
-            x = Phaser.Math.Between(minX, maxX);
+            x = this.rndBetween(minX, maxX);
           }
 
           const altitudeMeters = Math.max(0, -y * 0.5);
@@ -475,6 +798,10 @@
           this.altitudeMeters = 0;
           this.bestMeters = Number(localStorage.getItem(BEST_KEY) || 0);
           this.stars = [];
+          this.mp = null;
+          this.remotes = new Map();
+          this.worldSeed = null;
+          this.mpHud = null;
 
           this.bgGraphics = this.add.graphics().setScrollFactor(0).setDepth(-10);
           for (let i = 0; i < 120; i++) {
@@ -517,38 +844,189 @@
             .setScrollFactor(0).setDepth(10);
           this.hudBest = this.add.text(GAME_WIDTH - 16, 16, "", { fontFamily: "Segoe UI, sans-serif", fontSize: "14px", color: "#aaaacc" })
             .setScrollFactor(0).setOrigin(1, 0).setDepth(10);
+          this.mpHud = this.add.text(GAME_WIDTH / 2, 78, "", {
+            fontFamily: "Segoe UI, sans-serif", fontSize: "12px", color: "#aaddff", align: "center",
+          }).setScrollFactor(0).setOrigin(0.5, 0).setDepth(10).setVisible(false);
           this.overlayText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40, "", { ...textStyle, fontSize: "36px", align: "center" })
             .setScrollFactor(0).setOrigin(0.5).setDepth(20).setShadow(3, 3, "#000000", 6);
           this.subText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, "", { fontFamily: "Segoe UI, sans-serif", fontSize: "16px", color: "#bbbccc", align: "center" })
             .setScrollFactor(0).setOrigin(0.5).setDepth(20);
 
           this.input.keyboard.on("keydown-SPACE", () => {
-            if (this.state === "menu" || this.state === "gameover") this.startGame();
+            if (this.state === "menu") this.startSolo();
+            else if (this.state === "gameover") this.returnToMenu();
           });
           this.input.on("pointerdown", (pointer) => {
             if (this.state !== "menu" && this.state !== "gameover") return;
             const target = pointer.event && pointer.event.target;
-            if (target && target.closest && target.closest("#touch-controls")) return;
-            this.startGame();
+            if (target && target.closest && (
+              target.closest("#touch-controls") ||
+              target.closest("#menu-btns") ||
+              target.closest("#lobby-ui")
+            )) return;
+            if (this.state === "menu") this.startSolo();
+            else if (this.state === "gameover") this.returnToMenu();
           });
 
           if (this.input.touch) this.input.touch.capture = false;
 
-          this.showMenu();
+          document.getElementById("btn-solo").onclick = () => this.startSolo();
+          document.getElementById("btn-create").onclick = () => this.createRoom();
+          document.getElementById("btn-join").onclick = () => this.promptJoin();
+          document.getElementById("lobby-start").onclick = () => {
+            if (this.mp && this.mp.isHost) this.mp.hostStart();
+          };
+          document.getElementById("lobby-copy").onclick = () => {
+            if (!this.mp || !this.mp.roomId) return;
+            const link = shareRoomUrl(this.mp.roomId);
+            navigator.clipboard.writeText(link).then(() => {
+              document.getElementById("lobby-room").textContent = "¡Enlace copiado! Sala: " + this.mp.roomId;
+            }).catch(() => {
+              prompt("Copia este enlace y envíaselo a tu amigo:", link);
+            });
+          };
+
+          const params = new URLSearchParams(location.search);
+          const room = params.get("room");
+          if (room && params.get("host") === "1") this.createRoom(room);
+          else if (room) this.joinRoom(room);
+          else this.showMenu();
+        }
+
+        setMenuUi(mode) {
+          document.getElementById("menu-btns").classList.toggle("visible", mode === "menu");
+          document.getElementById("lobby-ui").classList.toggle("visible", mode === "lobby");
         }
 
         controlHints() {
           if (touchControls.enabled) {
-            return "Botones abajo: ← → mover  ·  ↑ saltar\n\nToca la pantalla para empezar";
+            return "Elige modo abajo  ·  o toca para jugar solo";
           }
-          return "↑ o Espacio para saltar  ·  ← → para moverte\n\nPulsa Espacio o toca para empezar";
+          return "Elige modo abajo  ·  Espacio = jugar solo";
         }
 
         showMenu() {
           this.state = "menu";
+          if (this.mp) { this.mp.destroy(); this.mp = null; }
+          this.clearRemotes();
+          this.setMenuUi("menu");
+          this.mpHud.setVisible(false);
           this.overlayText.setText("Hasta la luna\no más");
           this.subText.setText(this.controlHints());
           this.updateHud();
+        }
+
+        showLobby() {
+          this.state = "lobby";
+          this.setMenuUi("lobby");
+          this.overlayText.setText("Sala multijugador");
+          this.onLobbyUpdate();
+        }
+
+        onLobbyUpdate() {
+          if (!this.mp) return;
+          document.getElementById("lobby-room").textContent = "Sala: " + this.mp.roomId;
+          const names = [...this.mp.players.values()].map((p) => p.name).join(", ");
+          document.getElementById("lobby-players").textContent = "Jugadores (" + this.mp.players.size + "/4): " + names;
+          document.getElementById("lobby-start").style.display = this.mp.isHost ? "block" : "none";
+          const wait = this.mp.isHost
+            ? "Comparte el enlace.\nCuando estéis, pulsa Empezar."
+            : "Esperando a que el anfitrión empiece…";
+          this.subText.setText(wait);
+        }
+
+        async createRoom(existingRoom) {
+          this.setMenuUi("menu");
+          this.overlayText.setText("Creando sala…");
+          this.subText.setText("Un momento");
+          try {
+            this.mp = new MultiplayerManager(this);
+            await this.mp.createRoom(existingRoom);
+            this.showLobby();
+          } catch {
+            this.mp = null;
+            this.overlayText.setText("No se pudo crear sala");
+            this.subText.setText("Prueba de nuevo o juega solo");
+            this.setMenuUi("menu");
+          }
+        }
+
+        promptJoin() {
+          const code = prompt("Código de sala (6 letras):", "");
+          if (code) this.joinRoom(code.trim());
+        }
+
+        async joinRoom(code) {
+          this.setMenuUi("menu");
+          this.overlayText.setText("Uniéndose…");
+          this.subText.setText("Sala " + code.toUpperCase());
+          try {
+            this.mp = new MultiplayerManager(this);
+            await this.mp.joinRoom(code);
+            this.showLobby();
+          } catch {
+            this.mp = null;
+            this.overlayText.setText("No se encontró la sala");
+            this.subText.setText("Revisa el código o crea una nueva");
+            this.setMenuUi("menu");
+          }
+        }
+
+        onPlayerJoined(p) {
+          if (p.id === this.mp?.localPeerId) return;
+          if (!this.remotes.has(p.id)) {
+            this.remotes.set(p.id, new RemoteAvatar(this, p.id, p.name, p.color));
+          }
+        }
+
+        onRemoteEvent(msg) {
+          if (!msg.id || msg.id === this.mp?.localPeerId) return;
+          if (msg.t === "out") {
+            const r = this.remotes.get(msg.id);
+            if (r) { r.destroy(); this.remotes.delete(msg.id); }
+            return;
+          }
+          if (!this.remotes.has(msg.id)) {
+            const pl = this.mp?.players.get(msg.id);
+            if (pl) this.remotes.set(msg.id, new RemoteAvatar(this, pl.id, pl.name, pl.color));
+          }
+          const r = this.remotes.get(msg.id);
+          if (!r) return;
+          if (msg.t === "pos") r.setTarget(msg.x, msg.y, msg.f, msg.alt);
+          if (msg.t === "fall") r.markFallen();
+          if (msg.t === "moon") r.markFallen();
+        }
+
+        clearRemotes() {
+          for (const r of this.remotes.values()) r.destroy();
+          this.remotes.clear();
+        }
+
+        startSolo() {
+          if (this.mp) { this.mp.destroy(); this.mp = null; }
+          this.clearRemotes();
+          this.mpHud.setVisible(false);
+          this.setMenuUi("menu");
+          this.startGame(null);
+        }
+
+        startMultiplayerGame(seed) {
+          this.setMenuUi("menu");
+          this.worldSeed = seed;
+          for (const p of this.mp.players.values()) {
+            if (p.id !== this.mp.localPeerId) this.onPlayerJoined(p);
+          }
+          this.mpHud.setVisible(true);
+          this.startGame(seed);
+        }
+
+        returnToMenu() {
+          if (this.mp) { this.mp.destroy(); this.mp = null; }
+          const u = new URL(location.href);
+          u.searchParams.delete("room");
+          u.searchParams.delete("host");
+          history.replaceState(null, "", u.toString());
+          this.showMenu();
         }
 
         resetTouchState() {
@@ -561,14 +1039,19 @@
           });
         }
 
-        startGame() {
+        startGame(seed) {
           if (this.state === "playing") return;
           this.resetTouchState();
           this.world.destroy();
           this.platformGroup.clear(true, true);
           const startY = GAME_HEIGHT - 120;
-          this.world = new WorldGenerator(this, this.platformGroup, startY);
+          this.world = new WorldGenerator(this, this.platformGroup, startY, seed);
           this.player.reset(GAME_WIDTH / 2, startY - 60);
+          if (this.mp && this.mp.localColor) {
+            this.player.sprite.setFillStyle(this.mp.localColor);
+          } else {
+            this.player.sprite.setFillStyle(0xff6b4a);
+          }
           this.altitudeMeters = 0;
           this.state = "playing";
           this.overlayText.setText("");
@@ -576,14 +1059,31 @@
           this.cameras.main.scrollY = 0;
         }
 
-        endGame() {
+        endGame(reason) {
           this.state = "gameover";
           if (this.altitudeMeters > this.bestMeters) {
             this.bestMeters = this.altitudeMeters;
             localStorage.setItem(BEST_KEY, String(this.bestMeters));
           }
-          this.overlayText.setText("¡Caíste!");
-          this.subText.setText("Altura: " + formatAltitude(this.altitudeMeters) + "\n\nToca para reintentar");
+          if (this.mp && this.mp.active) {
+            this.mp.emit({ t: "fall", id: this.mp.localPeerId, alt: Math.floor(this.altitudeMeters) });
+          }
+          this.overlayText.setText(reason || "¡Caíste!");
+          this.subText.setText("Altura: " + formatAltitude(this.altitudeMeters) + "\n\nToca para volver al menú");
+        }
+
+        updateMpHud() {
+          if (!this.mp || !this.mp.active) { this.mpHud.setVisible(false); return; }
+          const rows = [...this.mp.players.values()]
+            .map((p) => {
+              const r = this.remotes.get(p.id);
+              const alt = p.id === this.mp.localPeerId
+                ? Math.floor(this.altitudeMeters)
+                : (r ? r.altitude : 0);
+              return p.name + " " + formatAltitude(alt);
+            })
+            .join("  ·  ");
+          this.mpHud.setText("🏁 " + rows);
         }
 
         updateBackground() {
@@ -622,6 +1122,10 @@
         }
 
         update() {
+          if (this.state === "lobby") {
+            this.updateBackground();
+            return;
+          }
           if (this.state !== "playing") {
             this.updateBackground();
             this.updateHud();
@@ -642,13 +1146,19 @@
           if (this.player.y > dangerY) { this.endGame(); return; }
 
           this.world.update(this.player.y, this.altitudeMeters);
+          if (this.mp) this.mp.syncScene(this);
+          for (const r of this.remotes.values()) r.update();
           this.updateBackground();
           this.updateHud();
+          this.updateMpHud();
 
           if (this.altitudeMeters >= ALTITUDE.moonThreshold) {
             this.state = "gameover";
+            if (this.mp && this.mp.active) {
+              this.mp.emit({ t: "moon", id: this.mp.localPeerId, alt: Math.floor(this.altitudeMeters) });
+            }
             this.overlayText.setText("¡Llegaste a la luna!");
-            this.subText.setText(formatAltitude(this.altitudeMeters) + "\n\n¿Y si intentas ir aún más lejos?\nToca para reintentar");
+            this.subText.setText(formatAltitude(this.altitudeMeters) + "\n\n¡Ganaste la carrera!\nToca para volver al menú");
             if (this.altitudeMeters > this.bestMeters) {
               this.bestMeters = this.altitudeMeters;
               localStorage.setItem(BEST_KEY, String(this.bestMeters));
