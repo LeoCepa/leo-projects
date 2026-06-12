@@ -1133,10 +1133,17 @@
           else this.showMenu();
         }
 
+        hideAllMenuUi() {
+          document.getElementById("menu-btns").classList.remove("visible");
+          document.getElementById("lobby-ui").classList.remove("visible");
+          document.getElementById("local-pick").classList.remove("visible");
+        }
+
         setMenuUi(mode) {
-          document.getElementById("menu-btns").classList.toggle("visible", mode === "menu");
-          document.getElementById("lobby-ui").classList.toggle("visible", mode === "lobby");
-          document.getElementById("local-pick").classList.toggle("visible", mode === "local_pick");
+          this.hideAllMenuUi();
+          if (mode === "menu") document.getElementById("menu-btns").classList.add("visible");
+          if (mode === "lobby") document.getElementById("lobby-ui").classList.add("visible");
+          if (mode === "local_pick") document.getElementById("local-pick").classList.add("visible");
         }
 
         controlHints() {
@@ -1400,7 +1407,6 @@
             document.getElementById("touch-controls").classList.add("visible");
           }
           this.mpHud.setVisible(false);
-          this.setMenuUi("menu");
           this.startGame(null, 1);
         }
 
@@ -1408,13 +1414,11 @@
           if (this.mp) { this.mp.destroy(); this.mp = null; }
           this.clearRemotes();
           this.localMode = true;
-          this.setMenuUi("menu");
           this.startGame(null, count);
           this.setupSplitScreen(count);
         }
 
         startMultiplayerGame(seed) {
-          this.setMenuUi("menu");
           this.localMode = false;
           this.teardownSplitScreen();
           hideSplitTouch();
@@ -1428,6 +1432,7 @@
 
         returnToMenu() {
           if (this.mp) { this.mp.destroy(); this.mp = null; }
+          this.teardownSplitScreen();
           const u = new URL(location.href);
           u.searchParams.delete("room");
           u.searchParams.delete("host");
@@ -1442,6 +1447,7 @@
         startGame(seed, playerCount) {
           if (this.state === "playing") return;
           playerCount = playerCount || 1;
+          this.hideAllMenuUi();
           this.resetTouchState();
           for (const p of this.players) p.destroy();
           this.players = [];
@@ -1596,9 +1602,11 @@
                 cam.scrollY = Phaser.Math.Linear(cam.scrollY, targetScrollY, 0.08);
               }
 
-              drawSliceBackground(pl.sliceBg, pl.altitudeMeters, sliceH);
+              const sliceTop = i * sliceH;
+              drawSliceBackground(pl.sliceBg, pl.altitudeMeters, sliceH, sliceTop);
               const zone = getZoneForAltitude(pl.altitudeMeters);
-              pl.sliceHud.setText(pl.name + " · " + formatAltitude(pl.altitudeMeters) + " · " + zone.name + (pl.fallen ? " 💀" : ""));
+              pl.sliceHud.setPosition(10, sliceTop + 6);
+              pl.sliceHud.setText(formatAltitude(pl.altitudeMeters) + " · " + zone.name + (pl.fallen ? " 💀" : ""));
             }
 
             this.world.update(leaderY, this.altitudeMeters);
