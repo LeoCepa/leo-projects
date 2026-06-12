@@ -164,46 +164,73 @@
         padding: 14px 16px;
         border-radius: 14px;
       }
-      @media (pointer: coarse) {
-        #local-3, #local-4 { display: none; }
+      #split-touch {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        pointer-events: none;
       }
-
-      #touch-controls-p2 { display: none; }
-      #touch-controls-p2.visible { display: block; }
-      #touch-controls-p2 button {
+      #split-touch.visible { display: block; }
+      .split-chunk-pad {
+        position: absolute;
+        left: 0;
+        right: 0;
+        pointer-events: none;
+        border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+        box-sizing: border-box;
+      }
+      .split-chunk-pad:last-child { border-bottom: none; }
+      .split-chunk-label {
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-family: "Segoe UI", sans-serif;
+        font-size: 11px;
+        color: rgba(255,255,255,0.55);
+        pointer-events: none;
+      }
+      .split-chunk-controls {
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        pointer-events: none;
+      }
+      .split-chunk-controls .move-group {
+        display: flex;
+        gap: 6px;
+        pointer-events: none;
+      }
+      .split-chunk-pad button {
         pointer-events: auto;
         touch-action: manipulation;
         -webkit-tap-highlight-color: transparent;
         border: 2px solid rgba(255, 255, 255, 0.45);
-        background: rgba(20, 20, 40, 0.72);
+        background: rgba(20, 20, 40, 0.82);
         color: #fff;
-        font-size: 28px;
+        font-size: 22px;
         line-height: 1;
-        border-radius: 18px;
-        min-width: 76px;
-        min-height: 76px;
+        border-radius: 14px;
+        min-width: 58px;
+        min-height: 54px;
         padding: 0;
         font-family: "Segoe UI", sans-serif;
         user-select: none;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
       }
-      #touch-controls-p2 button.pressed {
+      .split-chunk-pad button.pressed {
         background: rgba(255, 255, 255, 0.38);
         border-color: rgba(255, 255, 255, 0.85);
-        transform: scale(0.96);
       }
-      #touch-controls-p2 .move-group {
-        position: fixed;
-        right: max(12px, env(safe-area-inset-right));
-        left: auto;
-        bottom: var(--pad-bottom);
-      }
-      #touch-controls-p2 #tc2-jump {
-        position: fixed;
-        right: max(108px, calc(env(safe-area-inset-right) + 96px));
-        bottom: var(--pad-bottom);
-        min-width: 76px;
-        min-height: 76px;
+      .split-chunk-pad[data-players="4"] button {
+        min-width: 46px;
+        min-height: 42px;
+        font-size: 18px;
+        border-radius: 12px;
       }
     </style>
   </head>
@@ -234,13 +261,7 @@
       </div>
       <button type="button" id="tc-jump" aria-label="Saltar">↑<small>SALTAR</small></button>
     </div>
-    <div id="touch-controls-p2" aria-label="Controles jugador 2">
-      <div class="move-group">
-        <button type="button" id="tc2-left" aria-label="J2 izquierda">←</button>
-        <button type="button" id="tc2-right" aria-label="J2 derecha">→</button>
-      </div>
-      <button type="button" id="tc2-jump" aria-label="J2 saltar">↑</button>
-    </div>
+    <div id="split-touch" aria-label="Controles multijugador local"></div>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.87.0/dist/phaser.min.js"></script>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script>
@@ -305,18 +326,18 @@
         resetAll() { this.left = false; this.right = false; this.jumpPressed = false; },
       };
 
-      const localTouch = {
-        p1: { left: false, right: false, jumpPressed: false, resetJump() { this.jumpPressed = false; }, resetAll() { this.left = false; this.right = false; this.jumpPressed = false; } },
-        p2: { left: false, right: false, jumpPressed: false, resetJump() { this.jumpPressed = false; }, resetAll() { this.left = false; this.right = false; this.jumpPressed = false; } },
-      };
-
-      const holdTouchesP2 = { left: new Set(), right: new Set() };
+      const localTouchPads = [0, 1, 2, 3].map(() => ({
+        left: false, right: false, jumpPressed: false,
+        resetJump() { this.jumpPressed = false; },
+        resetAll() { this.left = false; this.right = false; this.jumpPressed = false; },
+      }));
+      const holdTouchesPads = [0, 1, 2, 3].map(() => ({ left: new Set(), right: new Set() }));
 
       const LOCAL_BINDINGS = [
-        { name: "Jugador 1", color: 0xff6b4a, touch: "p1", keys: { left: ["LEFT"], right: ["RIGHT"], jump: ["UP", "SPACE"] } },
-        { name: "Jugador 2", color: 0x4a9fff, touch: "p2", keys: { left: ["A"], right: ["D"], jump: ["W"] } },
-        { name: "Jugador 3", color: 0x66ee88, touch: null, keys: { left: ["J"], right: ["L"], jump: ["I"] } },
-        { name: "Jugador 4", color: 0xff66ee, touch: null, keys: { left: ["F"], right: ["H"], jump: ["T"] } },
+        { name: "Jugador 1", color: 0xff6b4a, touch: 0, keys: { left: ["LEFT"], right: ["RIGHT"], jump: ["UP", "SPACE"] } },
+        { name: "Jugador 2", color: 0x4a9fff, touch: 1, keys: { left: ["A"], right: ["D"], jump: ["W"] } },
+        { name: "Jugador 3", color: 0x66ee88, touch: 2, keys: { left: ["J"], right: ["L"], jump: ["I"] } },
+        { name: "Jugador 4", color: 0xff66ee, touch: 3, keys: { left: ["F"], right: ["H"], jump: ["T"] } },
       ];
 
       const IN_IFRAME = window.self !== window.top;
@@ -417,57 +438,87 @@
         });
       }
 
-      function syncHoldVisualsP2() {
-        localTouch.p2.left = holdTouchesP2.left.size > 0;
-        localTouch.p2.right = holdTouchesP2.right.size > 0;
-        const l = document.getElementById("tc2-left");
-        const r = document.getElementById("tc2-right");
-        if (l) l.classList.toggle("pressed", localTouch.p2.left);
-        if (r) r.classList.toggle("pressed", localTouch.p2.right);
+      function makeSyncHoldVisuals(idx) {
+        return () => {
+          localTouchPads[idx].left = holdTouchesPads[idx].left.size > 0;
+          localTouchPads[idx].right = holdTouchesPads[idx].right.size > 0;
+          const pad = document.querySelector('.split-chunk-pad[data-idx="' + idx + '"]');
+          if (!pad) return;
+          pad.querySelector(".btn-left").classList.toggle("pressed", localTouchPads[idx].left);
+          pad.querySelector(".btn-right").classList.toggle("pressed", localTouchPads[idx].right);
+        };
       }
 
-      function releaseHoldTouchesP2(e) {
+      function releaseAllSplitTouches(e) {
         for (const id of touchIdsFromEvent(e)) {
-          holdTouchesP2.left.delete(id);
-          holdTouchesP2.right.delete(id);
+          for (let i = 0; i < holdTouchesPads.length; i++) {
+            holdTouchesPads[i].left.delete(id);
+            holdTouchesPads[i].right.delete(id);
+          }
         }
-        syncHoldVisualsP2();
+        for (let i = 0; i < 4; i++) makeSyncHoldVisuals(i)();
       }
 
-      let localTouchP2Inited = false;
+      let splitTouchBuilt = false;
 
-      function initLocalTouchP2() {
-        const panel = document.getElementById("touch-controls-p2");
+      function showSplitTouch(count) {
         if (!touchControls.enabled) return;
-        panel.classList.add("visible");
-        if (localTouchP2Inited) return;
-        localTouchP2Inited = true;
-        bindHoldButtonGlobal(document.getElementById("tc2-left"), "left", holdTouchesP2, syncHoldVisualsP2);
-        bindHoldButtonGlobal(document.getElementById("tc2-right"), "right", holdTouchesP2, syncHoldVisualsP2);
-        bindTapButton(document.getElementById("tc2-jump"), () => { localTouch.p2.jumpPressed = true; });
-        document.addEventListener("touchend", releaseHoldTouchesP2, { passive: false });
-        document.addEventListener("touchcancel", releaseHoldTouchesP2, { passive: false });
+        const root = document.getElementById("split-touch");
+        root.classList.add("visible");
+        root.innerHTML = "";
+        const pct = 100 / count;
+        for (let i = 0; i < count; i++) {
+          const chunk = document.createElement("div");
+          chunk.className = "split-chunk-pad";
+          chunk.dataset.idx = String(i);
+          chunk.dataset.players = String(count);
+          chunk.style.top = (pct * i) + "%";
+          chunk.style.height = pct + "%";
+          chunk.innerHTML =
+            '<span class="split-chunk-label">' + LOCAL_BINDINGS[i].name + "</span>" +
+            '<div class="split-chunk-controls">' +
+            '<div class="move-group">' +
+            '<button type="button" class="btn-left" aria-label="Izquierda">←</button>' +
+            '<button type="button" class="btn-right" aria-label="Derecha">→</button>' +
+            "</div>" +
+            '<button type="button" class="btn-jump" aria-label="Saltar">↑</button>' +
+            "</div>";
+          root.appendChild(chunk);
+          const sync = makeSyncHoldVisuals(i);
+          bindHoldButtonGlobal(chunk.querySelector(".btn-left"), "left", holdTouchesPads[i], sync);
+          bindHoldButtonGlobal(chunk.querySelector(".btn-right"), "right", holdTouchesPads[i], sync);
+          bindTapButton(chunk.querySelector(".btn-jump"), () => { localTouchPads[i].jumpPressed = true; });
+        }
+        if (!splitTouchBuilt) {
+          document.addEventListener("touchend", releaseAllSplitTouches, { passive: false });
+          document.addEventListener("touchcancel", releaseAllSplitTouches, { passive: false });
+          splitTouchBuilt = true;
+        }
       }
 
-      function hideLocalTouchP2() {
-        document.getElementById("touch-controls-p2").classList.remove("visible");
-        holdTouchesP2.left.clear();
-        holdTouchesP2.right.clear();
-        localTouch.p2.resetAll();
+      function hideSplitTouch() {
+        document.getElementById("split-touch").classList.remove("visible");
+        for (let i = 0; i < 4; i++) {
+          holdTouchesPads[i].left.clear();
+          holdTouchesPads[i].right.clear();
+          localTouchPads[i].resetAll();
+        }
       }
 
       function resetAllTouchPads() {
         holdTouches.left.clear();
         holdTouches.right.clear();
-        holdTouchesP2.left.clear();
-        holdTouchesP2.right.clear();
+        for (let i = 0; i < 4; i++) {
+          holdTouchesPads[i].left.clear();
+          holdTouchesPads[i].right.clear();
+          localTouchPads[i].resetAll();
+        }
         touchControls.resetAll();
-        localTouch.p1.resetAll();
-        localTouch.p2.resetAll();
-        ["tc-left", "tc-right", "tc-jump", "tc2-left", "tc2-right", "tc2-jump"].forEach((id) => {
+        ["tc-left", "tc-right", "tc-jump"].forEach((id) => {
           const el = document.getElementById(id);
           if (el) el.classList.remove("pressed");
         });
+        document.querySelectorAll(".split-chunk-pad button").forEach((el) => el.classList.remove("pressed"));
       }
 
       window.addEventListener("message", (e) => {
@@ -823,6 +874,26 @@
         destroy() {
           this.sprite.destroy();
           if (this.label) this.label.destroy();
+          if (this.sliceBg) this.sliceBg.destroy();
+          if (this.sliceHud) this.sliceHud.destroy();
+        }
+      }
+
+      function drawSliceBackground(gfx, altitudeMeters, sliceH, offsetY) {
+        const zone = getZoneForAltitude(altitudeMeters);
+        const top = Phaser.Display.Color.IntegerToColor(zone.topColor);
+        const bottom = Phaser.Display.Color.IntegerToColor(zone.bottomColor);
+        gfx.clear();
+        const steps = 16;
+        for (let i = 0; i < steps; i++) {
+          const t = i / (steps - 1);
+          const color = Phaser.Display.Color.GetColor(
+            Phaser.Math.Linear(top.red, bottom.red, t),
+            Phaser.Math.Linear(top.green, bottom.green, t),
+            Phaser.Math.Linear(top.blue, bottom.blue, t)
+          );
+          gfx.fillStyle(color, 1);
+          gfx.fillRect(0, offsetY + (sliceH / steps) * i, GAME_WIDTH, sliceH / steps + 1);
         }
       }
 
@@ -973,8 +1044,11 @@
           this.worldSeed = null;
           this.mpHud = null;
           this.localMode = false;
+          this.localPlayerCount = 0;
           this.players = [];
           this.playerColliders = [];
+          this.splitCameras = [];
+          this.splitDivider = null;
 
           this.bgGraphics = this.add.graphics().setScrollFactor(0).setDepth(-10);
           for (let i = 0; i < 120; i++) {
@@ -1024,7 +1098,7 @@
               target.closest("#menu-btns") ||
               target.closest("#lobby-ui") ||
               target.closest("#local-pick") ||
-              target.closest("#touch-controls-p2")
+              target.closest("#split-touch")
             )) return;
             if (this.state === "menu") this.startSolo();
             else if (this.state === "gameover") this.returnToMenu();
@@ -1067,18 +1141,31 @@
 
         controlHints() {
           if (touchControls.enabled) {
-            return "Solo, local u online abajo\nJ1: izq · J2: der";
+            return "Solo, local u online abajo\nLocal = pantalla dividida";
           }
-          return "Solo, local u online\nJ1: flechas · J2: WASD";
+          return "Solo, local u online\nLocal = cada jugador su trozo";
+        }
+
+        setGlobalHudVisible(visible) {
+          this.bgGraphics.setVisible(visible);
+          this.moonSprite.setVisible(visible);
+          this.hudAltitude.setVisible(visible);
+          this.hudZone.setVisible(visible);
+          this.hudBest.setVisible(visible);
         }
 
         showMenu() {
           this.state = "menu";
           this.localMode = false;
-          hideLocalTouchP2();
+          this.teardownSplitScreen();
+          hideSplitTouch();
+          if (touchControls.enabled) {
+            document.getElementById("touch-controls").classList.add("visible");
+          }
           if (this.mp) { this.mp.destroy(); this.mp = null; }
           this.clearRemotes();
           this.setMenuUi("menu");
+          this.setGlobalHudVisible(true);
           this.mpHud.setVisible(false);
           this.overlayText.setText("Hasta la luna\no más");
           this.subText.setText(this.controlHints());
@@ -1089,9 +1176,76 @@
           this.state = "menu";
           this.setMenuUi("local_pick");
           this.overlayText.setText("Multijugador local");
-          this.subText.setText(touchControls.enabled
-            ? "2 jugadores en móvil\nControles en esquinas"
-            : "J1: flechas+espacio · J2: WASD\nJ3: IJL · J4: FHT");
+          this.subText.setText("La pantalla se divide en trozos\n2, 3 o 4 jugadores");
+        }
+
+        teardownSplitScreen() {
+          hideSplitTouch();
+          for (const pl of this.players) {
+            if (pl.sliceBg) { pl.sliceBg.destroy(); pl.sliceBg = null; }
+            if (pl.sliceHud) { pl.sliceHud.destroy(); pl.sliceHud = null; }
+          }
+          for (let i = 1; i < this.splitCameras.length; i++) {
+            this.splitCameras[i].destroy();
+          }
+          this.splitCameras = [];
+          if (this.splitDivider) {
+            this.splitDivider.destroy();
+            this.splitDivider = null;
+          }
+          this.cameras.main.setViewport(0, 0, GAME_WIDTH, GAME_HEIGHT);
+          this.cameras.main.setVisible(true);
+          this.cameras.main.setScroll(0, 0);
+          this.setGlobalHudVisible(true);
+        }
+
+        setupSplitScreen(count) {
+          this.teardownSplitScreen();
+          this.localPlayerCount = count;
+          const sliceH = GAME_HEIGHT / count;
+          this.setGlobalHudVisible(false);
+          this.mpHud.setVisible(false);
+
+          this.splitCameras = [];
+          for (let i = 0; i < count; i++) {
+            const cam = i === 0 ? this.cameras.main : this.cameras.add(0, i * sliceH, GAME_WIDTH, sliceH);
+            cam.setViewport(0, i * sliceH, GAME_WIDTH, sliceH);
+            cam.setVisible(true);
+            cam.setScroll(0, 0);
+            cam.setBackgroundColor(0x0a0a1a);
+            this.splitCameras.push(cam);
+
+            const pl = this.players[i];
+            if (pl.label) pl.label.setVisible(false);
+            pl.sliceBg = this.add.graphics().setDepth(-10).setScrollFactor(0);
+            pl.sliceHud = this.add.text(10, 6, pl.name, {
+              fontFamily: "Segoe UI, sans-serif", fontSize: "13px", color: "#ffffff",
+            }).setScrollFactor(0).setDepth(15).setShadow(1, 1, "#000", 3);
+          }
+
+          for (let i = 0; i < count; i++) {
+            for (let j = 0; j < count; j++) {
+              if (i === j) continue;
+              const a = this.players[i];
+              const b = this.players[j];
+              this.splitCameras[i].ignore(b.sprite);
+              if (b.label) this.splitCameras[i].ignore(b.label);
+              this.splitCameras[i].ignore(b.sliceBg);
+              this.splitCameras[i].ignore(b.sliceHud);
+            }
+            this.splitCameras[i].ignore(this.overlayText);
+            this.splitCameras[i].ignore(this.subText);
+          }
+
+          this.splitDivider = this.add.graphics().setScrollFactor(0).setDepth(200);
+          this.splitDivider.clear();
+          for (let i = 1; i < count; i++) {
+            this.splitDivider.fillStyle(0xffffff, 0.3);
+            this.splitDivider.fillRect(0, i * sliceH - 2, GAME_WIDTH, 4);
+          }
+
+          document.getElementById("touch-controls").classList.remove("visible");
+          showSplitTouch(count);
         }
 
         keyIsDown(names) {
@@ -1115,8 +1269,9 @@
         getPlayerInput(index) {
           const b = LOCAL_BINDINGS[index];
           let touch = null;
-          if (b.touch === "p1") touch = touchControls;
-          if (b.touch === "p2") touch = localTouch.p2;
+          if (b.touch != null && touchControls.enabled) {
+            touch = this.localMode ? localTouchPads[b.touch] : (b.touch === 0 ? touchControls : null);
+          }
           return {
             left: this.keyIsDown(b.keys.left) || (touch && touch.left),
             right: this.keyIsDown(b.keys.right) || (touch && touch.right),
@@ -1239,7 +1394,11 @@
           if (this.mp) { this.mp.destroy(); this.mp = null; }
           this.clearRemotes();
           this.localMode = false;
-          hideLocalTouchP2();
+          this.teardownSplitScreen();
+          hideSplitTouch();
+          if (touchControls.enabled) {
+            document.getElementById("touch-controls").classList.add("visible");
+          }
           this.mpHud.setVisible(false);
           this.setMenuUi("menu");
           this.startGame(null, 1);
@@ -1250,16 +1409,15 @@
           this.clearRemotes();
           this.localMode = true;
           this.setMenuUi("menu");
-          if (count >= 2 && touchControls.enabled) initLocalTouchP2();
-          else hideLocalTouchP2();
-          this.mpHud.setVisible(true);
           this.startGame(null, count);
+          this.setupSplitScreen(count);
         }
 
         startMultiplayerGame(seed) {
           this.setMenuUi("menu");
           this.localMode = false;
-          hideLocalTouchP2();
+          this.teardownSplitScreen();
+          hideSplitTouch();
           this.worldSeed = seed;
           for (const p of this.mp.players.values()) {
             if (p.id !== this.mp.localPeerId) this.onPlayerJoined(p);
@@ -1311,12 +1469,18 @@
           this.state = "playing";
           this.overlayText.setText("");
           this.subText.setText("");
-          this.cameras.main.scrollY = 0;
+          if (!this.localMode) {
+            this.cameras.main.scrollY = 0;
+          }
         }
 
         endGame(reason) {
           this.state = "gameover";
-          hideLocalTouchP2();
+          this.teardownSplitScreen();
+          hideSplitTouch();
+          if (touchControls.enabled) {
+            document.getElementById("touch-controls").classList.add("visible");
+          }
           const best = Math.max(...this.players.map((p) => p.altitudeMeters), this.altitudeMeters);
           if (best > this.bestMeters) {
             this.bestMeters = best;
@@ -1331,7 +1495,8 @@
 
         endLocalGame(title) {
           this.state = "gameover";
-          hideLocalTouchP2();
+          this.teardownSplitScreen();
+          hideSplitTouch();
           const best = Math.max(...this.players.map((p) => p.altitudeMeters));
           if (best > this.bestMeters) {
             this.bestMeters = best;
@@ -1342,14 +1507,7 @@
         }
 
         updateMpHud() {
-          if (this.localMode) {
-            const rows = this.players
-              .map((p) => p.name + " " + formatAltitude(p.altitudeMeters) + (p.fallen ? " 💀" : ""))
-              .join("  ·  ");
-            this.mpHud.setText("🏁 " + rows);
-            this.mpHud.setVisible(true);
-            return;
-          }
+          if (this.localMode && this.splitCameras.length) return;
           if (!this.mp || !this.mp.active) { this.mpHud.setVisible(false); return; }
           const rows = [...this.mp.players.values()]
             .map((p) => {
@@ -1413,21 +1571,58 @@
             this.players[i].update(this.getPlayerInput(i));
           }
           touchControls.resetJump();
-          localTouch.p1.resetJump();
-          localTouch.p2.resetJump();
+          for (let t = 0; t < 4; t++) localTouchPads[t].resetJump();
 
           let leaderY = this.player.y;
           this.altitudeMeters = 0;
-          const dangerY = this.cameras.main.scrollY + GAME_HEIGHT - WORLD.dangerZoneOffset;
 
+          if (this.localMode && this.splitCameras.length) {
+            const sliceH = GAME_HEIGHT / this.splitCameras.length;
+            const dangerScale = sliceH / GAME_HEIGHT;
+
+            for (let i = 0; i < this.players.length; i++) {
+              const pl = this.players[i];
+              const cam = this.splitCameras[i];
+              const raw = Math.max(0, (GAME_HEIGHT - 120 - pl.y) * ALTITUDE.metersPerPixel);
+              pl.altitudeMeters = Math.max(pl.altitudeMeters, raw);
+              this.altitudeMeters = Math.max(this.altitudeMeters, pl.altitudeMeters);
+              if (!pl.fallen && pl.y < leaderY) leaderY = pl.y;
+
+              const dangerY = cam.scrollY + sliceH - WORLD.dangerZoneOffset * dangerScale;
+              if (!pl.fallen && pl.y > dangerY) pl.markFallen();
+
+              const targetScrollY = pl.y - sliceH * 0.42;
+              if (targetScrollY < cam.scrollY) {
+                cam.scrollY = Phaser.Math.Linear(cam.scrollY, targetScrollY, 0.08);
+              }
+
+              drawSliceBackground(pl.sliceBg, pl.altitudeMeters, sliceH);
+              const zone = getZoneForAltitude(pl.altitudeMeters);
+              pl.sliceHud.setText(pl.name + " · " + formatAltitude(pl.altitudeMeters) + " · " + zone.name + (pl.fallen ? " 💀" : ""));
+            }
+
+            this.world.update(leaderY, this.altitudeMeters);
+
+            const alive = this.players.filter((p) => !p.fallen);
+            const moonWinner = alive.find((p) => p.altitudeMeters >= ALTITUDE.moonThreshold);
+            if (moonWinner) {
+              this.endLocalGame("🌙 " + moonWinner.name + " llegó a la luna!");
+              return;
+            }
+            if (alive.length === 0) {
+              const best = [...this.players].sort((a, b) => b.altitudeMeters - a.altitudeMeters)[0];
+              this.endLocalGame("🏆 " + best.name + " gana con " + formatAltitude(best.altitudeMeters));
+            }
+            return;
+          }
+
+          const dangerY = this.cameras.main.scrollY + GAME_HEIGHT - WORLD.dangerZoneOffset;
           for (const pl of this.players) {
             const raw = Math.max(0, (GAME_HEIGHT - 120 - pl.y) * ALTITUDE.metersPerPixel);
             pl.altitudeMeters = Math.max(pl.altitudeMeters, raw);
             this.altitudeMeters = Math.max(this.altitudeMeters, pl.altitudeMeters);
             if (!pl.fallen && pl.y < leaderY) leaderY = pl.y;
             if (!pl.fallen && pl.y > dangerY) {
-              pl.markFallen();
-              if (this.localMode) continue;
               this.endGame("¡Caíste!");
               return;
             }
@@ -1444,20 +1639,6 @@
           this.updateBackground();
           this.updateHud();
           this.updateMpHud();
-
-          if (this.localMode) {
-            const alive = this.players.filter((p) => !p.fallen);
-            const moonWinner = alive.find((p) => p.altitudeMeters >= ALTITUDE.moonThreshold);
-            if (moonWinner) {
-              this.endLocalGame("🌙 " + moonWinner.name + " llegó a la luna!");
-              return;
-            }
-            if (alive.length === 0) {
-              const best = [...this.players].sort((a, b) => b.altitudeMeters - a.altitudeMeters)[0];
-              this.endLocalGame("🏆 " + best.name + " gana con " + formatAltitude(best.altitudeMeters));
-            }
-            return;
-          }
 
           if (this.altitudeMeters >= ALTITUDE.moonThreshold) {
             this.state = "gameover";
